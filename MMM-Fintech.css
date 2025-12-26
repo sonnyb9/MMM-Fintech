@@ -13,15 +13,55 @@
   border-collapse: collapse;
 }
 
+.mmm-fintech-table th {
+  font-weight: normal;
+  opacity: 0.6;
+  font-size: 0.8em;
+  text-align: right;
+  padding-bottom: 5px;
+}
+
+.mmm-fintech-table th:first-child {
+  text-align: left;
+}
+
 .mmm-fintech-symbol {
   text-align: left;
-  padding-right: 20px;
   font-weight: bold;
 }
 
 .mmm-fintech-qty {
   text-align: right;
   font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-value {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-change {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-change.positive {
+  color: #5f5;
+}
+
+.mmm-fintech-change.negative {
+  color: #f55;
+}
+
+.mmm-fintech-total {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+  font-weight: bold;
+  text-align: right;
 }
 
 .mmm-fintech-footer {

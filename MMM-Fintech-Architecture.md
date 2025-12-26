@@ -124,3 +124,8 @@ This schema allows provider-agnostic rendering and simplifies future expansion.
 - Tax reporting.
 
 MMM-Fintech is strictly a read-only visualization layer.
+
+---
+
+## 9. Future Enhancements
+- Display percent change since last close for each stock (when Plaid/Fidelity integration is added in Phase 3).

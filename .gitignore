@@ -6,3 +6,4 @@ cdp_api_key.json
 *.log
 .cache/
 test-coinbase.js
+manual-holdings.json

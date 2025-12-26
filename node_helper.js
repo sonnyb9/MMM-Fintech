@@ -31,10 +31,10 @@ module.exports = NodeHelper.create({
   },
 
   decrypt: function (encryptedBuffer, key) {
-    const iv = encryptedBuffer.slice(0, 12);
-    const authTag = encryptedBuffer.slice(12, 28);
-    const encrypted = encryptedBuffer.slice(28);
-    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    var iv = encryptedBuffer.slice(0, 12);
+    var authTag = encryptedBuffer.slice(12, 28);
+    var encrypted = encryptedBuffer.slice(28);
+    var decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
     decipher.setAuthTag(authTag);
     return decipher.update(encrypted, null, "utf8") + decipher.final("utf8");
   },
@@ -51,9 +51,9 @@ module.exports = NodeHelper.create({
     }
 
     try {
-      const key = fs.readFileSync(this.keyPath);
-      const encrypted = fs.readFileSync(this.encryptedCredentialsPath);
-      const decrypted = this.decrypt(encrypted, key);
+      var key = fs.readFileSync(this.keyPath);
+      var encrypted = fs.readFileSync(this.encryptedCredentialsPath);
+      var decrypted = this.decrypt(encrypted, key);
       return JSON.parse(decrypted);
     } catch (err) {
       this.log("Error decrypting credentials: " + err.message);
@@ -116,10 +116,37 @@ module.exports = NodeHelper.create({
     }
   },
 
+  fetchPrices: async function (symbols) {
+    var prices = {};
+    var self = this;
+
+    for (var i = 0; i < symbols.length; i++) {
+      var symbol = symbols[i];
+      var productId = symbol + "-USD";
+
+      try {
+        var product = await self.client.getProduct({ product_id: productId });
+        var price = parseFloat(product.price || 0);
+        var change24h = parseFloat((product.price_percentage_change_24h || "0").replace("%", ""));
+
+        prices[symbol] = {
+          price: price,
+          change24h: change24h
+        };
+      } catch (err) {
+        self.log("Error fetching price for " + symbol + ": " + err.message);
+        prices[symbol] = { price: 0, change24h: 0 };
+      }
+    }
+
+    return prices;
+  },
+
   syncHoldings: async function () {
     this.log("Starting holdings sync...");
 
     var apiHoldings = [];
+    var self = this;
 
     if (this.client) {
       try {
@@ -172,8 +199,29 @@ module.exports = NodeHelper.create({
       return a.symbol.localeCompare(b.symbol);
     });
 
+    var symbols = holdings.map(function (h) { return h.symbol; });
+    var prices = {};
+
+    if (this.client && symbols.length > 0) {
+      this.log("Fetching prices for " + symbols.length + " symbols...");
+      prices = await this.fetchPrices(symbols);
+    }
+
+    var totalValue = 0;
+
+    holdings.forEach(function (h) {
+      var priceData = prices[h.symbol] || { price: 0, change24h: 0 };
+      h.price = priceData.price;
+      h.change24h = priceData.change24h;
+      h.value = h.quantity * h.price;
+      totalValue += h.value;
+    });
+
+    this.log("Total portfolio value: $" + totalValue.toFixed(2));
+
     var data = {
       holdings: holdings,
+      totalValue: totalValue,
       lastUpdated: new Date().toISOString()
     };
 
