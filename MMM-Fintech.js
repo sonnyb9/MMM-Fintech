@@ -2,6 +2,7 @@ Module.register("MMM-Fintech", {
   defaults: {
     priceUpdateInterval: 5 * 60 * 1000,
     showLastUpdated: true,
+    sortBy: "value",
     title: "Holdings"
   },
 
@@ -43,14 +44,16 @@ Module.register("MMM-Fintech", {
     }
 
     var table = document.createElement("table");
-    table.className = "small mmm-fintech-table";
+    table.className = "xsmall mmm-fintech-table";
 
     var headerRow = document.createElement("tr");
     headerRow.innerHTML = "<th></th><th class='mmm-fintech-qty-header'>Qty</th><th class='mmm-fintech-value-header'>Value</th><th class='mmm-fintech-change-header'>24h</th>";
     table.appendChild(headerRow);
 
-    for (var i = 0; i < this.holdings.length; i++) {
-      var h = this.holdings[i];
+    var sortedHoldings = this.sortHoldings(this.holdings);
+
+    for (var i = 0; i < sortedHoldings.length; i++) {
+      var h = sortedHoldings[i];
       var row = document.createElement("tr");
 
       var symbolCell = document.createElement("td");
@@ -99,6 +102,23 @@ Module.register("MMM-Fintech", {
     }
 
     return wrapper;
+  },
+
+  sortHoldings: function (holdings) {
+    var self = this;
+    var sorted = holdings.slice();
+
+    if (self.config.sortBy === "value") {
+      sorted.sort(function (a, b) {
+        return (b.value || 0) - (a.value || 0);
+      });
+    } else {
+      sorted.sort(function (a, b) {
+        return a.symbol.localeCompare(b.symbol);
+      });
+    }
+
+    return sorted;
   },
 
   formatQuantity: function (qty) {
