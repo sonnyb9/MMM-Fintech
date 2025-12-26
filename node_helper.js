@@ -12,6 +12,8 @@ module.exports = NodeHelper.create({
     this.keyPath = path.join(process.env.HOME || process.env.USERPROFILE, ".mmm-fintech-key");
     this.manualHoldingsPath = path.join(this.path, "manual-holdings.json");
     this.client = null;
+    this.priceInterval = null;
+    this.holdingsTimeout = null;
   },
 
   log: function (msg) {
@@ -27,7 +29,49 @@ module.exports = NodeHelper.create({
 
     if (notification === "MMM-FINTECH_SYNC") {
       this.syncHoldings();
+      this.schedulePriceUpdates();
+      this.scheduleNextHoldingsSync();
     }
+  },
+
+  schedulePriceUpdates: function () {
+    var self = this;
+    var interval = this.config.priceUpdateInterval || 5 * 60 * 1000;
+
+    if (this.priceInterval) {
+      clearInterval(this.priceInterval);
+    }
+
+    this.log("Price updates scheduled every " + (interval / 60000) + " minutes");
+
+    this.priceInterval = setInterval(function () {
+      self.updatePricesOnly();
+    }, interval);
+  },
+
+  scheduleNextHoldingsSync: function () {
+    var self = this;
+    var now = new Date();
+    var next4am = new Date(now);
+
+    next4am.setHours(4, 0, 0, 0);
+
+    if (now >= next4am) {
+      next4am.setDate(next4am.getDate() + 1);
+    }
+
+    var msUntil4am = next4am.getTime() - now.getTime();
+
+    if (this.holdingsTimeout) {
+      clearTimeout(this.holdingsTimeout);
+    }
+
+    this.log("Next holdings sync scheduled for " + next4am.toLocaleString());
+
+    this.holdingsTimeout = setTimeout(function () {
+      self.syncHoldings();
+      self.scheduleNextHoldingsSync();
+    }, msUntil4am);
   },
 
   decrypt: function (encryptedBuffer, key) {
@@ -142,6 +186,50 @@ module.exports = NodeHelper.create({
     return prices;
   },
 
+  updatePricesOnly: async function () {
+    if (!fs.existsSync(this.dataPath)) {
+      return;
+    }
+
+    var self = this;
+
+    try {
+      var raw = fs.readFileSync(this.dataPath);
+      var data = JSON.parse(raw);
+      var holdings = data.holdings || [];
+
+      if (holdings.length === 0 || !this.client) {
+        return;
+      }
+
+      var symbols = holdings.map(function (h) { return h.symbol; });
+
+      this.log("Updating prices for " + symbols.length + " symbols...");
+      var prices = await this.fetchPrices(symbols);
+
+      var totalValue = 0;
+
+      holdings.forEach(function (h) {
+        var priceData = prices[h.symbol] || { price: h.price || 0, change24h: h.change24h || 0 };
+        h.price = priceData.price;
+        h.change24h = priceData.change24h;
+        h.value = h.quantity * h.price;
+        totalValue += h.value;
+      });
+
+      data.holdings = holdings;
+      data.totalValue = totalValue;
+      data.lastPriceUpdate = new Date().toISOString();
+
+      fs.writeFileSync(this.dataPath, JSON.stringify(data, null, 2));
+      this.log("Prices updated");
+
+      this.sendSocketNotification("MMM-FINTECH_DATA", data);
+    } catch (err) {
+      this.log("Error updating prices: " + err.message);
+    }
+  },
+
   syncHoldings: async function () {
     this.log("Starting holdings sync...");
 
@@ -222,7 +310,8 @@ module.exports = NodeHelper.create({
     var data = {
       holdings: holdings,
       totalValue: totalValue,
-      lastUpdated: new Date().toISOString()
+      lastUpdated: new Date().toISOString(),
+      lastPriceUpdate: new Date().toISOString()
     };
 
     try {

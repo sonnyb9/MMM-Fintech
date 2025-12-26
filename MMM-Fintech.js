@@ -1,6 +1,6 @@
 Module.register("MMM-Fintech", {
   defaults: {
-    updateInterval: 24 * 60 * 60 * 1000,
+    priceUpdateInterval: 5 * 60 * 1000,
     showLastUpdated: true,
     title: "Holdings"
   },
