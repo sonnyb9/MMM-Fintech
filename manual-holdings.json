@@ -1,0 +1,18 @@
+{
+  "description": "Manual holdings not returned by Coinbase API (e.g., staked assets)",
+  "lastUpdated": "2025-12-26T00:00:00Z",
+  "holdings": [
+    {
+      "symbol": "SOL",
+      "quantity": 12.91904735,
+      "source": "coinbase-staked",
+      "notes": "100% staked"
+    },
+    {
+      "symbol": "ETH",
+      "quantity": 0.38046338,
+      "source": "coinbase-staked",
+      "notes": "Staked ETH (excludes unstaked portion from API)"
+    }
+  ]
+}

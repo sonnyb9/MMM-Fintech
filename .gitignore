@@ -1,5 +1,8 @@
 node_modules/
 oauth-tokens.enc
+cdp-credentials.enc
+cdp_api_key.json
 .env
 *.log
 .cache/
+test-coinbase.js

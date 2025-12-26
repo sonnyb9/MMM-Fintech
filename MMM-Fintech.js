@@ -1,66 +1,88 @@
-/* MagicMirror²
- * Module: MMM-Fintech
- *
- * By sonnyb9
- * MIT Licensed.
- */
-
 Module.register("MMM-Fintech", {
   defaults: {
-    updateInterval: 24 * 60 * 60 * 1000, // 24 hours
-    showLastUpdated: true
+    updateInterval: 24 * 60 * 60 * 1000,
+    showLastUpdated: true,
+    title: "Holdings"
   },
 
   start: function () {
     Log.info("Starting module: " + this.name);
-
     this.holdings = [];
     this.lastUpdated = null;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
     });
+
+    var self = this;
+    setTimeout(function () {
+      self.sendSocketNotification("MMM-FINTECH_SYNC", {});
+    }, 5000);
   },
 
   getStyles: function () {
-    return [];
+    return ["MMM-Fintech.css"];
   },
 
   getDom: function () {
-    const wrapper = document.createElement("div");
+    var wrapper = document.createElement("div");
+    wrapper.className = "mmm-fintech";
+
+    var header = document.createElement("div");
+    header.className = "mmm-fintech-header";
+    header.innerHTML = this.config.title;
+    wrapper.appendChild(header);
 
     if (!this.holdings.length) {
-      wrapper.innerHTML = "MMM-Fintech: no data available";
+      var empty = document.createElement("div");
+      empty.className = "dimmed small";
+      empty.innerHTML = "Loading holdings...";
+      wrapper.appendChild(empty);
       return wrapper;
     }
 
-    const table = document.createElement("table");
-    table.className = "small";
+    var table = document.createElement("table");
+    table.className = "small mmm-fintech-table";
 
-    this.holdings.forEach(h => {
-      const row = document.createElement("tr");
+    for (var i = 0; i < this.holdings.length; i++) {
+      var h = this.holdings[i];
+      var row = document.createElement("tr");
 
-      const symbol = document.createElement("td");
-      symbol.innerHTML = h.symbol;
+      var symbolCell = document.createElement("td");
+      symbolCell.className = "mmm-fintech-symbol";
+      symbolCell.innerHTML = h.symbol;
 
-      const qty = document.createElement("td");
-      qty.innerHTML = h.quantity;
+      var qtyCell = document.createElement("td");
+      qtyCell.className = "mmm-fintech-qty";
+      qtyCell.innerHTML = this.formatQuantity(h.quantity);
 
-      row.appendChild(symbol);
-      row.appendChild(qty);
+      row.appendChild(symbolCell);
+      row.appendChild(qtyCell);
       table.appendChild(row);
-    });
+    }
 
     wrapper.appendChild(table);
 
     if (this.config.showLastUpdated && this.lastUpdated) {
-      const footer = document.createElement("div");
-      footer.className = "dimmed small";
-      footer.innerHTML = "Last updated: " + this.lastUpdated;
+      var footer = document.createElement("div");
+      footer.className = "dimmed xsmall mmm-fintech-footer";
+      footer.innerHTML = "Updated: " + this.formatTime(this.lastUpdated);
       wrapper.appendChild(footer);
     }
 
     return wrapper;
+  },
+
+  formatQuantity: function (qty) {
+    if (qty >= 1) {
+      return qty.toFixed(4);
+    }
+    return qty.toPrecision(4);
+  },
+
+  formatTime: function (isoString) {
+    var date = new Date(isoString);
+    return date.toLocaleString();
   },
 
   socketNotificationReceived: function (notification, payload) {

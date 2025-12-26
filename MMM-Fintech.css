@@ -1,0 +1,30 @@
+.mmm-fintech {
+  padding: 10px;
+}
+
+.mmm-fintech-header {
+  font-weight: bold;
+  font-size: 1.2em;
+  margin-bottom: 10px;
+}
+
+.mmm-fintech-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mmm-fintech-symbol {
+  text-align: left;
+  padding-right: 20px;
+  font-weight: bold;
+}
+
+.mmm-fintech-qty {
+  text-align: right;
+  font-family: monospace;
+}
+
+.mmm-fintech-footer {
+  margin-top: 10px;
+  text-align: right;
+}

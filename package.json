@@ -4,5 +4,7 @@
   "description": "MagicMirror² module for consolidated financial holdings (crypto and brokerage)",
   "author": "sonnyb9",
   "license": "MIT",
-  "dependencies": {}
+  "dependencies": {
+    "coinbase-api": "^1.0.5"
+  }
 }
