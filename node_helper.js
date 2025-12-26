@@ -1,4 +1,5 @@
 const NodeHelper = require("node_helper");
+const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const { CBAdvancedTradeClient } = require("coinbase-api");
@@ -7,7 +8,8 @@ module.exports = NodeHelper.create({
   start: function () {
     this.log("MMM-Fintech node_helper started");
     this.dataPath = path.join(this.path, "cache.json");
-    this.credentialsPath = path.join(this.path, "cdp_api_key.json");
+    this.encryptedCredentialsPath = path.join(this.path, "cdp-credentials.enc");
+    this.keyPath = path.join(process.env.HOME || process.env.USERPROFILE, ".mmm-fintech-key");
     this.manualHoldingsPath = path.join(this.path, "manual-holdings.json");
     this.client = null;
   },
@@ -28,14 +30,46 @@ module.exports = NodeHelper.create({
     }
   },
 
+  decrypt: function (encryptedBuffer, key) {
+    const iv = encryptedBuffer.slice(0, 12);
+    const authTag = encryptedBuffer.slice(12, 28);
+    const encrypted = encryptedBuffer.slice(28);
+    const decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
+    decipher.setAuthTag(authTag);
+    return decipher.update(encrypted, null, "utf8") + decipher.final("utf8");
+  },
+
+  loadCredentials: function () {
+    if (!fs.existsSync(this.keyPath)) {
+      this.log("Encryption key not found at " + this.keyPath);
+      return null;
+    }
+
+    if (!fs.existsSync(this.encryptedCredentialsPath)) {
+      this.log("Encrypted credentials not found. Run setup-credentials.js first.");
+      return null;
+    }
+
+    try {
+      const key = fs.readFileSync(this.keyPath);
+      const encrypted = fs.readFileSync(this.encryptedCredentialsPath);
+      const decrypted = this.decrypt(encrypted, key);
+      return JSON.parse(decrypted);
+    } catch (err) {
+      this.log("Error decrypting credentials: " + err.message);
+      return null;
+    }
+  },
+
   initClient: function () {
-    if (!fs.existsSync(this.credentialsPath)) {
-      this.log("No CDP credentials found at " + this.credentialsPath);
+    var cdpKey = this.loadCredentials();
+
+    if (!cdpKey) {
+      this.log("No valid credentials available");
       return;
     }
 
     try {
-      const cdpKey = JSON.parse(fs.readFileSync(this.credentialsPath, "utf8"));
       this.client = new CBAdvancedTradeClient({
         apiKey: cdpKey.name,
         apiSecret: cdpKey.privateKey,
@@ -56,8 +90,8 @@ module.exports = NodeHelper.create({
     }
 
     try {
-      const raw = fs.readFileSync(this.dataPath);
-      const parsed = JSON.parse(raw);
+      var raw = fs.readFileSync(this.dataPath);
+      var parsed = JSON.parse(raw);
       this.sendSocketNotification("MMM-FINTECH_DATA", parsed);
     } catch (err) {
       this.log("Error reading cache: " + err.message);
@@ -74,7 +108,7 @@ module.exports = NodeHelper.create({
     }
 
     try {
-      const data = JSON.parse(fs.readFileSync(this.manualHoldingsPath, "utf8"));
+      var data = JSON.parse(fs.readFileSync(this.manualHoldingsPath, "utf8"));
       return data.holdings || [];
     } catch (err) {
       this.log("Error reading manual holdings: " + err.message);
@@ -85,23 +119,25 @@ module.exports = NodeHelper.create({
   syncHoldings: async function () {
     this.log("Starting holdings sync...");
 
-    let apiHoldings = [];
+    var apiHoldings = [];
 
     if (this.client) {
       try {
-        const response = await this.client.getAccounts({ limit: 250 });
-        const accounts = response.accounts || [];
+        var response = await this.client.getAccounts({ limit: 250 });
+        var accounts = response.accounts || [];
 
         apiHoldings = accounts
-          .filter((acct) => {
-            const balance = parseFloat(acct.available_balance?.value || "0");
+          .filter(function (acct) {
+            var balance = parseFloat(acct.available_balance?.value || "0");
             return balance > 0;
           })
-          .map((acct) => ({
-            symbol: acct.currency,
-            quantity: parseFloat(acct.available_balance?.value || "0"),
-            source: "coinbase-api"
-          }));
+          .map(function (acct) {
+            return {
+              symbol: acct.currency,
+              quantity: parseFloat(acct.available_balance?.value || "0"),
+              source: "coinbase-api"
+            };
+          });
 
         this.log("Fetched " + apiHoldings.length + " holdings from API");
       } catch (err) {
@@ -111,12 +147,12 @@ module.exports = NodeHelper.create({
       this.log("No Coinbase client available, using manual holdings only");
     }
 
-    const manualHoldings = this.loadManualHoldings();
+    var manualHoldings = this.loadManualHoldings();
     this.log("Loaded " + manualHoldings.length + " manual holdings");
 
-    const merged = {};
+    var merged = {};
 
-    apiHoldings.forEach((h) => {
+    apiHoldings.forEach(function (h) {
       if (!merged[h.symbol]) {
         merged[h.symbol] = { symbol: h.symbol, quantity: 0, sources: [] };
       }
@@ -124,7 +160,7 @@ module.exports = NodeHelper.create({
       merged[h.symbol].sources.push(h.source);
     });
 
-    manualHoldings.forEach((h) => {
+    manualHoldings.forEach(function (h) {
       if (!merged[h.symbol]) {
         merged[h.symbol] = { symbol: h.symbol, quantity: 0, sources: [] };
       }
@@ -132,11 +168,11 @@ module.exports = NodeHelper.create({
       merged[h.symbol].sources.push(h.source || "manual");
     });
 
-    const holdings = Object.values(merged).sort((a, b) =>
-      a.symbol.localeCompare(b.symbol)
-    );
+    var holdings = Object.values(merged).sort(function (a, b) {
+      return a.symbol.localeCompare(b.symbol);
+    });
 
-    const data = {
+    var data = {
       holdings: holdings,
       lastUpdated: new Date().toISOString()
     };
