@@ -3,7 +3,6 @@
 }
 
 .mmm-fintech-header {
-  font-weight: bold;
   font-size: 1.2em;
   margin-bottom: 10px;
 }
@@ -27,7 +26,6 @@
 
 .mmm-fintech-symbol {
   text-align: left;
-  font-weight: bold;
 }
 
 .mmm-fintech-qty {
@@ -60,7 +58,6 @@
   margin-top: 10px;
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
-  font-weight: bold;
   text-align: right;
 }
 
