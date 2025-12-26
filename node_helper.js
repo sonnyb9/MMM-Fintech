@@ -217,7 +217,7 @@ module.exports = NodeHelper.create({
       totalValue += h.value;
     });
 
-    this.log("Total portfolio value: $" + totalValue.toFixed(2));
+    this.log("Total portfolio value updated");
 
     var data = {
       holdings: holdings,
