@@ -14,10 +14,25 @@ module.exports = NodeHelper.create({
     this.client = null;
     this.priceInterval = null;
     this.holdingsTimeout = null;
+    this.lastError = null;
   },
 
   log: function (msg) {
     console.log("[MMM-Fintech] " + msg);
+  },
+
+  logError: function (category, message, details) {
+    this.lastError = {
+      category: category,
+      message: message,
+      details: details || null,
+      timestamp: new Date().toISOString()
+    };
+    this.log("ERROR [" + category + "] " + message + (details ? " - " + details : ""));
+  },
+
+  clearError: function () {
+    this.lastError = null;
   },
 
   socketNotificationReceived: function (notification, payload) {
@@ -85,12 +100,12 @@ module.exports = NodeHelper.create({
 
   loadCredentials: function () {
     if (!fs.existsSync(this.keyPath)) {
-      this.log("Encryption key not found at " + this.keyPath);
+      this.logError("CREDENTIALS", "Encryption key not found", this.keyPath);
       return null;
     }
 
     if (!fs.existsSync(this.encryptedCredentialsPath)) {
-      this.log("Encrypted credentials not found. Run setup-credentials.js first.");
+      this.logError("CREDENTIALS", "Encrypted credentials not found", "Run setup-credentials.js");
       return null;
     }
 
@@ -100,7 +115,7 @@ module.exports = NodeHelper.create({
       var decrypted = this.decrypt(encrypted, key);
       return JSON.parse(decrypted);
     } catch (err) {
-      this.log("Error decrypting credentials: " + err.message);
+      this.logError("CREDENTIALS", "Failed to decrypt credentials", err.message);
       return null;
     }
   },
@@ -109,7 +124,6 @@ module.exports = NodeHelper.create({
     var cdpKey = this.loadCredentials();
 
     if (!cdpKey) {
-      this.log("No valid credentials available");
       return;
     }
 
@@ -120,7 +134,7 @@ module.exports = NodeHelper.create({
       });
       this.log("Coinbase client initialized");
     } catch (err) {
-      this.log("Error initializing Coinbase client: " + err.message);
+      this.logError("CLIENT", "Failed to initialize Coinbase client", err.message);
     }
   },
 
@@ -128,7 +142,8 @@ module.exports = NodeHelper.create({
     if (!fs.existsSync(this.dataPath)) {
       this.sendSocketNotification("MMM-FINTECH_DATA", {
         holdings: [],
-        lastUpdated: null
+        lastUpdated: null,
+        hasError: !!this.lastError
       });
       return;
     }
@@ -136,12 +151,14 @@ module.exports = NodeHelper.create({
     try {
       var raw = fs.readFileSync(this.dataPath);
       var parsed = JSON.parse(raw);
+      parsed.hasError = !!this.lastError;
       this.sendSocketNotification("MMM-FINTECH_DATA", parsed);
     } catch (err) {
-      this.log("Error reading cache: " + err.message);
+      this.logError("CACHE", "Failed to read cache file", err.message);
       this.sendSocketNotification("MMM-FINTECH_DATA", {
         holdings: [],
-        lastUpdated: null
+        lastUpdated: null,
+        hasError: true
       });
     }
   },
@@ -155,7 +172,7 @@ module.exports = NodeHelper.create({
       var data = JSON.parse(fs.readFileSync(this.manualHoldingsPath, "utf8"));
       return data.holdings || [];
     } catch (err) {
-      this.log("Error reading manual holdings: " + err.message);
+      this.logError("MANUAL", "Failed to read manual holdings", err.message);
       return [];
     }
   },
@@ -163,6 +180,7 @@ module.exports = NodeHelper.create({
   fetchPrices: async function (symbols) {
     var prices = {};
     var self = this;
+    var hasError = false;
 
     for (var i = 0; i < symbols.length; i++) {
       var symbol = symbols[i];
@@ -178,12 +196,13 @@ module.exports = NodeHelper.create({
           change24h: change24h
         };
       } catch (err) {
-        self.log("Error fetching price for " + symbol + ": " + err.message);
+        self.logError("PRICE", "Failed to fetch price for " + symbol, err.message);
         prices[symbol] = { price: 0, change24h: 0 };
+        hasError = true;
       }
     }
 
-    return prices;
+    return { prices: prices, hasError: hasError };
   },
 
   updatePricesOnly: async function () {
@@ -205,7 +224,12 @@ module.exports = NodeHelper.create({
       var symbols = holdings.map(function (h) { return h.symbol; });
 
       this.log("Updating prices for " + symbols.length + " symbols...");
-      var prices = await this.fetchPrices(symbols);
+      var result = await this.fetchPrices(symbols);
+      var prices = result.prices;
+
+      if (!result.hasError) {
+        this.clearError();
+      }
 
       var totalValue = 0;
 
@@ -220,18 +244,20 @@ module.exports = NodeHelper.create({
       data.holdings = holdings;
       data.totalValue = totalValue;
       data.lastPriceUpdate = new Date().toISOString();
+      data.hasError = !!this.lastError;
 
       fs.writeFileSync(this.dataPath, JSON.stringify(data, null, 2));
       this.log("Prices updated");
 
       this.sendSocketNotification("MMM-FINTECH_DATA", data);
     } catch (err) {
-      this.log("Error updating prices: " + err.message);
+      this.logError("PRICE_UPDATE", "Failed to update prices", err.message);
     }
   },
 
   syncHoldings: async function () {
     this.log("Starting holdings sync...");
+    this.clearError();
 
     var apiHoldings = [];
     var self = this;
@@ -256,10 +282,10 @@ module.exports = NodeHelper.create({
 
         this.log("Fetched " + apiHoldings.length + " holdings from API");
       } catch (err) {
-        this.log("Error fetching from Coinbase: " + err.message);
+        this.logError("HOLDINGS", "Failed to fetch holdings from Coinbase", err.message);
       }
     } else {
-      this.log("No Coinbase client available, using manual holdings only");
+      this.logError("CLIENT", "No Coinbase client available", "Check credentials setup");
     }
 
     var manualHoldings = this.loadManualHoldings();
@@ -289,10 +315,13 @@ module.exports = NodeHelper.create({
 
     var symbols = holdings.map(function (h) { return h.symbol; });
     var prices = {};
+    var priceError = false;
 
     if (this.client && symbols.length > 0) {
       this.log("Fetching prices for " + symbols.length + " symbols...");
-      prices = await this.fetchPrices(symbols);
+      var result = await this.fetchPrices(symbols);
+      prices = result.prices;
+      priceError = result.hasError;
     }
 
     var totalValue = 0;
@@ -311,14 +340,16 @@ module.exports = NodeHelper.create({
       holdings: holdings,
       totalValue: totalValue,
       lastUpdated: new Date().toISOString(),
-      lastPriceUpdate: new Date().toISOString()
+      lastPriceUpdate: new Date().toISOString(),
+      hasError: !!this.lastError
     };
 
     try {
       fs.writeFileSync(this.dataPath, JSON.stringify(data, null, 2));
       this.log("Cache updated with " + holdings.length + " holdings");
     } catch (err) {
-      this.log("Error writing cache: " + err.message);
+      this.logError("CACHE", "Failed to write cache file", err.message);
+      data.hasError = true;
     }
 
     this.sendSocketNotification("MMM-FINTECH_DATA", data);

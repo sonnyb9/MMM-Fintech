@@ -11,6 +11,7 @@ Module.register("MMM-Fintech", {
     this.holdings = [];
     this.totalValue = 0;
     this.lastUpdated = null;
+    this.hasError = false;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
@@ -32,12 +33,23 @@ Module.register("MMM-Fintech", {
 
     var header = document.createElement("div");
     header.className = "mmm-fintech-header";
-    header.innerHTML = this.config.title;
+
+    var titleSpan = document.createElement("span");
+    titleSpan.innerHTML = this.config.title;
+    header.appendChild(titleSpan);
+
+    if (this.hasError) {
+      var errorSpan = document.createElement("span");
+      errorSpan.className = "mmm-fintech-error";
+      errorSpan.innerHTML = " ⚠ check logs";
+      header.appendChild(errorSpan);
+    }
+
     wrapper.appendChild(header);
 
     if (!this.holdings.length) {
       var empty = document.createElement("div");
-      empty.className = "dimmed small";
+      empty.className = "dimmed xsmall";
       empty.innerHTML = "Loading holdings...";
       wrapper.appendChild(empty);
       return wrapper;
@@ -145,6 +157,7 @@ Module.register("MMM-Fintech", {
       this.holdings = payload.holdings || [];
       this.totalValue = payload.totalValue || 0;
       this.lastUpdated = payload.lastUpdated || null;
+      this.hasError = payload.hasError || false;
       this.updateDom();
     }
   }
