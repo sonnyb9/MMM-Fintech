@@ -2,7 +2,7 @@ const NodeHelper = require("node_helper");
 const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const { CBAdvancedTradeClient } = require("coinbase-api");
+const https = require("https");
 
 module.exports = NodeHelper.create({
   start: function () {
@@ -11,7 +11,7 @@ module.exports = NodeHelper.create({
     this.encryptedCredentialsPath = path.join(this.path, "cdp-credentials.enc");
     this.keyPath = path.join(process.env.HOME || process.env.USERPROFILE, ".mmm-fintech-key");
     this.manualHoldingsPath = path.join(this.path, "manual-holdings.json");
-    this.client = null;
+    this.credentials = null;
     this.priceInterval = null;
     this.holdingsTimeout = null;
     this.lastError = null;
@@ -152,27 +152,105 @@ module.exports = NodeHelper.create({
   },
 
   initClient: function () {
-    var credentials = this.loadCredentials();
-    if (!credentials) {
-      this.logError("INIT", "Cannot initialize Coinbase client without credentials");
+    this.credentials = this.loadCredentials();
+    if (!this.credentials) {
+      this.logError("INIT", "Cannot initialize without credentials");
       this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
       return;
     }
 
-    this.client = new CBAdvancedTradeClient({
-      cdpApiKeyName: credentials.name,
-      cdpApiKeyPrivateKey: credentials.privateKey
-    });
+    this.log("Credentials loaded successfully");
+  },
 
-    this.log("Coinbase client initialized");
+  buildJWT: function (method, path) {
+    var algorithm = "ES256";
+    var uri = method + " api.coinbase.com" + path;
+    
+    var header = {
+      alg: algorithm,
+      kid: this.credentials.name,
+      nonce: crypto.randomBytes(16).toString("hex")
+    };
+
+    var payload = {
+      sub: this.credentials.name,
+      iss: "cdp",
+      nbf: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 120,
+      uri: uri
+    };
+
+    var encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
+    var encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
+    var token = encodedHeader + "." + encodedPayload;
+
+    var sign = crypto.createSign("SHA256");
+    sign.update(token);
+    sign.end();
+    
+    var signature = sign.sign(this.credentials.privateKey, "base64url");
+    
+    return token + "." + signature;
+  },
+
+  makeAPIRequest: function (method, path, params) {
+    var self = this;
+    
+    return new Promise(function (resolve, reject) {
+      var jwt = self.buildJWT(method, path);
+      
+      var queryString = "";
+      if (params && Object.keys(params).length > 0) {
+        queryString = "?" + Object.keys(params)
+          .map(function (key) { return key + "=" + encodeURIComponent(params[key]); })
+          .join("&");
+      }
+
+      var options = {
+        hostname: "api.coinbase.com",
+        port: 443,
+        path: path + queryString,
+        method: method,
+        headers: {
+          "Authorization": "Bearer " + jwt,
+          "Content-Type": "application/json"
+        }
+      };
+
+      var req = https.request(options, function (res) {
+        var data = "";
+
+        res.on("data", function (chunk) {
+          data += chunk;
+        });
+
+        res.on("end", function () {
+          if (res.statusCode >= 200 && res.statusCode < 300) {
+            try {
+              resolve(JSON.parse(data));
+            } catch (error) {
+              reject(new Error("Failed to parse response: " + error.message));
+            }
+          } else {
+            reject(new Error("API request failed with status " + res.statusCode + ": " + data));
+          }
+        });
+      });
+
+      req.on("error", function (error) {
+        reject(error);
+      });
+
+      req.end();
+    });
   },
 
   fetchHoldingsFromAPI: async function () {
-    if (!this.client) {
-      throw new Error("Coinbase client not initialized");
+    if (!this.credentials) {
+      throw new Error("Credentials not loaded");
     }
 
-    var response = await this.client.getAccounts({ limit: 250 });
+    var response = await this.makeAPIRequest("GET", "/api/v3/brokerage/accounts", { limit: 250 });
     var holdings = [];
 
     if (response && response.accounts) {
@@ -193,17 +271,17 @@ module.exports = NodeHelper.create({
   },
 
   fetchPriceFromAPI: async function (symbol) {
-    if (!this.client) {
-      throw new Error("Coinbase client not initialized");
+    if (!this.credentials) {
+      throw new Error("Credentials not loaded");
     }
 
     var productId = symbol + "-USD";
-    var product = await this.client.getProduct(productId);
+    var response = await this.makeAPIRequest("GET", "/api/v3/brokerage/market/products/" + productId, {});
 
-    if (product && product.price) {
+    if (response && response.price) {
       return {
-        price: parseFloat(product.price),
-        change24h: parseFloat(product.price_percentage_change_24h || 0)
+        price: parseFloat(response.price),
+        change24h: parseFloat(response.price_percentage_change_24h || 0)
       };
     }
 
