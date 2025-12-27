@@ -160,8 +160,8 @@ module.exports = NodeHelper.create({
     }
 
     this.client = new CBAdvancedTradeClient({
-      apiKey: credentials.name,
-      privateKey: credentials.privateKey
+      cdpApiKeyName: credentials.name,
+      cdpApiKeyPrivateKey: credentials.privateKey
     });
 
     this.log("Coinbase client initialized");
