@@ -172,7 +172,7 @@ module.exports = NodeHelper.create({
       throw new Error("Coinbase client not initialized");
     }
 
-    var response = await this.client.rest.account.listAccounts({ limit: 250 });
+    var response = await this.client.getAccounts({ limit: 250 });
     var holdings = [];
 
     if (response && response.accounts) {
@@ -198,7 +198,7 @@ module.exports = NodeHelper.create({
     }
 
     var productId = symbol + "-USD";
-    var product = await this.client.rest.product.getProduct({ productId: productId });
+    var product = await this.client.getProduct(productId);
 
     if (product && product.price) {
       return {
