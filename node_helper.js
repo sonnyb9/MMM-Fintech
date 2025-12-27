@@ -164,8 +164,8 @@ module.exports = NodeHelper.create({
     this.log("Credentials loaded successfully");
   },
 
-  buildJWT: function (method, pathWithQuery) {
-    var uri = method + " api.coinbase.com" + pathWithQuery;
+  buildJWT: function (method, path) {
+    var uri = method + " api.coinbase.com" + path;
     
     var payload = {
       sub: this.credentials.name,
@@ -199,7 +199,7 @@ module.exports = NodeHelper.create({
       }
 
       var pathWithQuery = path + queryString;
-      var jwt = self.buildJWT(method, pathWithQuery);
+      var jwtToken = self.buildJWT(method, path);
 
       var options = {
         hostname: "api.coinbase.com",
@@ -207,7 +207,7 @@ module.exports = NodeHelper.create({
         path: pathWithQuery,
         method: method,
         headers: {
-          "Authorization": "Bearer " + jwt,
+          "Authorization": "Bearer " + jwtToken,
           "Content-Type": "application/json"
         }
       };
