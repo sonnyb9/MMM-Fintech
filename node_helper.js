@@ -3,6 +3,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const https = require("https");
+const jwt = require("jsonwebtoken");
 
 module.exports = NodeHelper.create({
   start: function () {
@@ -163,16 +164,8 @@ module.exports = NodeHelper.create({
   },
 
   buildJWT: function (method, pathWithQuery) {
-    var algorithm = "ES256";
     var uri = method + " api.coinbase.com" + pathWithQuery;
     
-    var header = {
-      alg: algorithm,
-      kid: this.credentials.name,
-      nonce: crypto.randomBytes(16).toString("hex"),
-      typ: "JWT"
-    };
-
     var payload = {
       sub: this.credentials.name,
       iss: "cdp",
@@ -181,17 +174,16 @@ module.exports = NodeHelper.create({
       uri: uri
     };
 
-    var encodedHeader = Buffer.from(JSON.stringify(header)).toString("base64url");
-    var encodedPayload = Buffer.from(JSON.stringify(payload)).toString("base64url");
-    var token = encodedHeader + "." + encodedPayload;
+    var header = {
+      alg: "ES256",
+      kid: this.credentials.name,
+      nonce: crypto.randomBytes(16).toString("hex")
+    };
 
-    var sign = crypto.createSign("SHA256");
-    sign.update(token);
-    sign.end();
-    
-    var signature = sign.sign(this.credentials.privateKey, "base64url");
-    
-    return token + "." + signature;
+    return jwt.sign(payload, this.credentials.privateKey, {
+      algorithm: "ES256",
+      header: header
+    });
   },
 
   makeAPIRequest: function (method, path, params) {
