@@ -301,7 +301,8 @@ module.exports = NodeHelper.create({
       if (fs.existsSync(this.manualHoldingsPath)) {
         try {
           var manualData = fs.readFileSync(this.manualHoldingsPath, "utf8");
-          manualHoldings = JSON.parse(manualData);
+          var parsed = JSON.parse(manualData);
+          manualHoldings = parsed.holdings || [];
           this.log("Loaded " + manualHoldings.length + " manual holdings");
         } catch (error) {
           this.logError("MANUAL_HOLDINGS", "Failed to load manual holdings", error.message);
