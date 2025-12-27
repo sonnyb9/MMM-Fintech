@@ -2,6 +2,24 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.3.0] - 2025-12-27
+
+### Added
+- **Retry Logic**: Exponential backoff for API calls (6 retries: 2s, 4s, 8s, 16s, 32s, 64s)
+- **Configurable Retries**: `maxRetries` config option (default: 6)
+- **JWT Authentication**: Proper ES256 JWT signing using `jsonwebtoken` library for CDP API keys
+
+### Changed
+- Replaced `coinbase-api` SDK with direct HTTPS requests and manual JWT authentication
+- JWT signature now excludes query parameters from URI (per Coinbase API requirements)
+- Manual holdings parsing now correctly extracts `holdings` array from JSON object
+- API accounts without `currency` field are now filtered out to prevent undefined symbols
+
+### Fixed
+- Coinbase CDP API authentication now works correctly with Secret API keys (ECDSA)
+- Setup script now saves encryption key as hex string instead of binary
+- Credential decryption handles hex-encoded keys properly
+
 ## [0.2.0] - 2025-12-26
 
 ### Added
@@ -42,7 +60,7 @@ All notable changes to MMM-Fintech are documented in this file.
 ## Roadmap
 
 ### Phase 2 - Hardening
-- [ ] Retry logic with exponential backoff
+- [x] Retry logic with exponential backoff
 - [ ] Stale data detection and alerts
 - [ ] Health notifications
 
