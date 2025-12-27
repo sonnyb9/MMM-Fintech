@@ -44,11 +44,12 @@ async function main() {
   let key;
   if (fs.existsSync(KEY_PATH)) {
     console.log("Using existing encryption key at " + KEY_PATH);
-    key = fs.readFileSync(KEY_PATH);
+    const existingKeyHex = fs.readFileSync(KEY_PATH, "utf8").trim();
+    key = Buffer.from(existingKeyHex, "hex");
   } else {
     console.log("Generating new encryption key...");
     key = generateKey();
-    fs.writeFileSync(KEY_PATH, key, { mode: 0o600 });
+    fs.writeFileSync(KEY_PATH, key.toString("hex"), { mode: 0o600 });
     console.log("Key saved to " + KEY_PATH);
   }
 
