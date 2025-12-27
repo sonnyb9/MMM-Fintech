@@ -16,7 +16,7 @@ module.exports = NodeHelper.create({
     this.priceInterval = null;
     this.holdingsTimeout = null;
     this.lastError = null;
-    this.maxRetries = 6;
+    this.maxRetries = null;
     this.initialRetryDelay = 2000;
   },
 
@@ -69,6 +69,7 @@ module.exports = NodeHelper.create({
   socketNotificationReceived: function (notification, payload) {
     if (notification === "MMM-FINTECH_INIT") {
       this.config = payload.config;
+      this.maxRetries = this.config.maxRetries || 6;
       this.initClient();
       this.loadCachedData();
     }

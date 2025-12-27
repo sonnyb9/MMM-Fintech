@@ -95,6 +95,7 @@ Add to your `config/config.js`:
 | `priceUpdateInterval` | 300000 | Price refresh interval in ms (5 min) |
 | `showLastUpdated` | true | Show last sync timestamp |
 | `sortBy` | "value" | Sort holdings by "value" or "name" |
+| `maxRetries` | 6 | Maximum API retry attempts with exponential backoff |
 
 ## Scheduling
 
