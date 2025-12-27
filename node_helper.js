@@ -15,6 +15,8 @@ module.exports = NodeHelper.create({
     this.priceInterval = null;
     this.holdingsTimeout = null;
     this.lastError = null;
+    this.maxRetries = 6;
+    this.initialRetryDelay = 2000;
   },
 
   log: function (msg) {
@@ -33,6 +35,34 @@ module.exports = NodeHelper.create({
 
   clearError: function () {
     this.lastError = null;
+  },
+
+  sleep: function (ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
+  },
+
+  retryWithBackoff: async function (fn, context, args, operation) {
+    var attempt = 0;
+    var self = this;
+
+    while (attempt <= this.maxRetries) {
+      try {
+        return await fn.apply(context, args);
+      } catch (error) {
+        attempt++;
+        
+        if (attempt > this.maxRetries) {
+          self.logError(operation, "Max retries exceeded", error.message);
+          throw error;
+        }
+
+        var delay = self.initialRetryDelay * Math.pow(2, attempt - 1);
+        self.log(operation + " failed (attempt " + attempt + "/" + self.maxRetries + "), retrying in " + (delay / 1000) + "s...");
+        await self.sleep(delay);
+      }
+    }
   },
 
   socketNotificationReceived: function (notification, payload) {
@@ -100,258 +130,223 @@ module.exports = NodeHelper.create({
 
   loadCredentials: function () {
     if (!fs.existsSync(this.keyPath)) {
-      this.logError("CREDENTIALS", "Encryption key not found", this.keyPath);
+      this.log("Encryption key not found at " + this.keyPath);
       return null;
     }
 
     if (!fs.existsSync(this.encryptedCredentialsPath)) {
-      this.logError("CREDENTIALS", "Encrypted credentials not found", "Run setup-credentials.js");
+      this.log("Encrypted credentials not found. Run setup-credentials.js first.");
       return null;
     }
 
     try {
-      var key = fs.readFileSync(this.keyPath);
-      var encrypted = fs.readFileSync(this.encryptedCredentialsPath);
-      var decrypted = this.decrypt(encrypted, key);
+      var encKey = fs.readFileSync(this.keyPath, "utf8").trim();
+      var keyBuffer = Buffer.from(encKey, "hex");
+      var encryptedData = fs.readFileSync(this.encryptedCredentialsPath);
+      var decrypted = this.decrypt(encryptedData, keyBuffer);
       return JSON.parse(decrypted);
-    } catch (err) {
-      this.logError("CREDENTIALS", "Failed to decrypt credentials", err.message);
+    } catch (error) {
+      this.logError("CREDENTIALS", "Failed to load credentials", error.message);
       return null;
     }
   },
 
   initClient: function () {
-    var cdpKey = this.loadCredentials();
+    var credentials = this.loadCredentials();
+    if (!credentials) {
+      this.logError("INIT", "Cannot initialize Coinbase client without credentials");
+      this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
+      return;
+    }
 
-    if (!cdpKey) {
+    this.client = new CBAdvancedTradeClient({
+      apiKey: credentials.name,
+      privateKey: credentials.privateKey
+    });
+
+    this.log("Coinbase client initialized");
+  },
+
+  fetchHoldingsFromAPI: async function () {
+    if (!this.client) {
+      throw new Error("Coinbase client not initialized");
+    }
+
+    var response = await this.client.rest.account.listAccounts({ limit: 250 });
+    var holdings = [];
+
+    if (response && response.accounts) {
+      for (var i = 0; i < response.accounts.length; i++) {
+        var account = response.accounts[i];
+        var balance = parseFloat(account.available_balance.value);
+        if (balance > 0) {
+          holdings.push({
+            symbol: account.currency,
+            quantity: balance,
+            sources: ["coinbase-api"]
+          });
+        }
+      }
+    }
+
+    return holdings;
+  },
+
+  fetchPriceFromAPI: async function (symbol) {
+    if (!this.client) {
+      throw new Error("Coinbase client not initialized");
+    }
+
+    var productId = symbol + "-USD";
+    var product = await this.client.rest.product.getProduct({ productId: productId });
+
+    if (product && product.price) {
+      return {
+        price: parseFloat(product.price),
+        change24h: parseFloat(product.price_percentage_change_24h || 0)
+      };
+    }
+
+    throw new Error("No price data returned for " + symbol);
+  },
+
+  syncHoldings: async function () {
+    var self = this;
+    this.log("Starting holdings sync...");
+
+    try {
+      var apiHoldings = await this.retryWithBackoff(
+        this.fetchHoldingsFromAPI,
+        this,
+        [],
+        "Holdings Fetch"
+      );
+
+      this.log("Fetched " + apiHoldings.length + " holdings from API");
+
+      var manualHoldings = [];
+      if (fs.existsSync(this.manualHoldingsPath)) {
+        try {
+          var manualData = fs.readFileSync(this.manualHoldingsPath, "utf8");
+          manualHoldings = JSON.parse(manualData);
+          this.log("Loaded " + manualHoldings.length + " manual holdings");
+        } catch (error) {
+          this.logError("MANUAL_HOLDINGS", "Failed to load manual holdings", error.message);
+        }
+      }
+
+      var allHoldings = apiHoldings.concat(manualHoldings);
+
+      for (var i = 0; i < allHoldings.length; i++) {
+        var holding = allHoldings[i];
+        try {
+          var priceData = await this.retryWithBackoff(
+            this.fetchPriceFromAPI,
+            this,
+            [holding.symbol],
+            "Price Fetch (" + holding.symbol + ")"
+          );
+
+          holding.price = priceData.price;
+          holding.change24h = priceData.change24h;
+          holding.value = holding.quantity * holding.price;
+        } catch (error) {
+          this.logError("PRICE_FETCH", "Failed to fetch price for " + holding.symbol, error.message);
+          holding.price = 0;
+          holding.change24h = 0;
+          holding.value = 0;
+        }
+      }
+
+      var totalValue = 0;
+      for (var j = 0; j < allHoldings.length; j++) {
+        totalValue += allHoldings[j].value;
+      }
+
+      var cache = {
+        holdings: allHoldings,
+        totalValue: totalValue,
+        lastUpdated: new Date().toISOString(),
+        lastPriceUpdate: new Date().toISOString(),
+        hasError: this.lastError !== null
+      };
+
+      fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
+      this.log("Cache updated with " + allHoldings.length + " holdings");
+
+      this.clearError();
+      this.sendSocketNotification("MMM-FINTECH_DATA", cache);
+
+    } catch (error) {
+      this.logError("SYNC", "Holdings sync failed", error.message);
+      this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
+    }
+  },
+
+  updatePricesOnly: async function () {
+    var self = this;
+    this.log("Updating prices...");
+
+    if (!fs.existsSync(this.dataPath)) {
+      this.log("No cache file found, skipping price update");
       return;
     }
 
     try {
-      this.client = new CBAdvancedTradeClient({
-        apiKey: cdpKey.name,
-        apiSecret: cdpKey.privateKey,
-      });
-      this.log("Coinbase client initialized");
-    } catch (err) {
-      this.logError("CLIENT", "Failed to initialize Coinbase client", err.message);
+      var cacheData = fs.readFileSync(this.dataPath, "utf8");
+      var cache = JSON.parse(cacheData);
+
+      for (var i = 0; i < cache.holdings.length; i++) {
+        var holding = cache.holdings[i];
+        try {
+          var priceData = await this.retryWithBackoff(
+            this.fetchPriceFromAPI,
+            this,
+            [holding.symbol],
+            "Price Update (" + holding.symbol + ")"
+          );
+
+          holding.price = priceData.price;
+          holding.change24h = priceData.change24h;
+          holding.value = holding.quantity * holding.price;
+        } catch (error) {
+          this.logError("PRICE_UPDATE", "Failed to update price for " + holding.symbol, error.message);
+        }
+      }
+
+      var totalValue = 0;
+      for (var j = 0; j < cache.holdings.length; j++) {
+        totalValue += cache.holdings[j].value;
+      }
+
+      cache.totalValue = totalValue;
+      cache.lastPriceUpdate = new Date().toISOString();
+      cache.hasError = this.lastError !== null;
+
+      fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
+      this.log("Prices updated");
+
+      this.clearError();
+      this.sendSocketNotification("MMM-FINTECH_DATA", cache);
+
+    } catch (error) {
+      this.logError("PRICE_UPDATE", "Price update failed", error.message);
+      this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
     }
   },
 
   loadCachedData: function () {
-    if (!fs.existsSync(this.dataPath)) {
-      this.sendSocketNotification("MMM-FINTECH_DATA", {
-        holdings: [],
-        lastUpdated: null,
-        hasError: !!this.lastError
-      });
-      return;
-    }
-
-    try {
-      var raw = fs.readFileSync(this.dataPath);
-      var parsed = JSON.parse(raw);
-      parsed.hasError = !!this.lastError;
-      this.sendSocketNotification("MMM-FINTECH_DATA", parsed);
-    } catch (err) {
-      this.logError("CACHE", "Failed to read cache file", err.message);
-      this.sendSocketNotification("MMM-FINTECH_DATA", {
-        holdings: [],
-        lastUpdated: null,
-        hasError: true
-      });
-    }
-  },
-
-  loadManualHoldings: function () {
-    if (!fs.existsSync(this.manualHoldingsPath)) {
-      return [];
-    }
-
-    try {
-      var data = JSON.parse(fs.readFileSync(this.manualHoldingsPath, "utf8"));
-      return data.holdings || [];
-    } catch (err) {
-      this.logError("MANUAL", "Failed to read manual holdings", err.message);
-      return [];
-    }
-  },
-
-  fetchPrices: async function (symbols) {
-    var prices = {};
-    var self = this;
-    var hasError = false;
-
-    for (var i = 0; i < symbols.length; i++) {
-      var symbol = symbols[i];
-      var productId = symbol + "-USD";
-
+    if (fs.existsSync(this.dataPath)) {
       try {
-        var product = await self.client.getProduct({ product_id: productId });
-        var price = parseFloat(product.price || 0);
-        var change24h = parseFloat((product.price_percentage_change_24h || "0").replace("%", ""));
-
-        prices[symbol] = {
-          price: price,
-          change24h: change24h
-        };
-      } catch (err) {
-        self.logError("PRICE", "Failed to fetch price for " + symbol, err.message);
-        prices[symbol] = { price: 0, change24h: 0 };
-        hasError = true;
-      }
-    }
-
-    return { prices: prices, hasError: hasError };
-  },
-
-  updatePricesOnly: async function () {
-    if (!fs.existsSync(this.dataPath)) {
-      return;
-    }
-
-    var self = this;
-
-    try {
-      var raw = fs.readFileSync(this.dataPath);
-      var data = JSON.parse(raw);
-      var holdings = data.holdings || [];
-
-      if (holdings.length === 0 || !this.client) {
-        return;
-      }
-
-      var symbols = holdings.map(function (h) { return h.symbol; });
-
-      this.log("Updating prices for " + symbols.length + " symbols...");
-      var result = await this.fetchPrices(symbols);
-      var prices = result.prices;
-
-      if (!result.hasError) {
-        this.clearError();
-      }
-
-      var totalValue = 0;
-
-      holdings.forEach(function (h) {
-        var priceData = prices[h.symbol] || { price: h.price || 0, change24h: h.change24h || 0 };
-        h.price = priceData.price;
-        h.change24h = priceData.change24h;
-        h.value = h.quantity * h.price;
-        totalValue += h.value;
-      });
-
-      data.holdings = holdings;
-      data.totalValue = totalValue;
-      data.lastPriceUpdate = new Date().toISOString();
-      data.hasError = !!this.lastError;
-
-      fs.writeFileSync(this.dataPath, JSON.stringify(data, null, 2));
-      this.log("Prices updated");
-
-      this.sendSocketNotification("MMM-FINTECH_DATA", data);
-    } catch (err) {
-      this.logError("PRICE_UPDATE", "Failed to update prices", err.message);
-    }
-  },
-
-  syncHoldings: async function () {
-    this.log("Starting holdings sync...");
-    this.clearError();
-
-    var apiHoldings = [];
-    var self = this;
-
-    if (this.client) {
-      try {
-        var response = await this.client.getAccounts({ limit: 250 });
-        var accounts = response.accounts || [];
-
-        apiHoldings = accounts
-          .filter(function (acct) {
-            var balance = parseFloat(acct.available_balance?.value || "0");
-            return balance > 0;
-          })
-          .map(function (acct) {
-            return {
-              symbol: acct.currency,
-              quantity: parseFloat(acct.available_balance?.value || "0"),
-              source: "coinbase-api"
-            };
-          });
-
-        this.log("Fetched " + apiHoldings.length + " holdings from API");
-      } catch (err) {
-        this.logError("HOLDINGS", "Failed to fetch holdings from Coinbase", err.message);
+        var data = fs.readFileSync(this.dataPath, "utf8");
+        var cache = JSON.parse(data);
+        this.log("Loaded cached data");
+        this.sendSocketNotification("MMM-FINTECH_DATA", cache);
+      } catch (error) {
+        this.logError("CACHE", "Failed to load cache", error.message);
       }
     } else {
-      this.logError("CLIENT", "No Coinbase client available", "Check credentials setup");
+      this.log("No cache file found");
     }
-
-    var manualHoldings = this.loadManualHoldings();
-    this.log("Loaded " + manualHoldings.length + " manual holdings");
-
-    var merged = {};
-
-    apiHoldings.forEach(function (h) {
-      if (!merged[h.symbol]) {
-        merged[h.symbol] = { symbol: h.symbol, quantity: 0, sources: [] };
-      }
-      merged[h.symbol].quantity += h.quantity;
-      merged[h.symbol].sources.push(h.source);
-    });
-
-    manualHoldings.forEach(function (h) {
-      if (!merged[h.symbol]) {
-        merged[h.symbol] = { symbol: h.symbol, quantity: 0, sources: [] };
-      }
-      merged[h.symbol].quantity += h.quantity;
-      merged[h.symbol].sources.push(h.source || "manual");
-    });
-
-    var holdings = Object.values(merged).sort(function (a, b) {
-      return a.symbol.localeCompare(b.symbol);
-    });
-
-    var symbols = holdings.map(function (h) { return h.symbol; });
-    var prices = {};
-    var priceError = false;
-
-    if (this.client && symbols.length > 0) {
-      this.log("Fetching prices for " + symbols.length + " symbols...");
-      var result = await this.fetchPrices(symbols);
-      prices = result.prices;
-      priceError = result.hasError;
-    }
-
-    var totalValue = 0;
-
-    holdings.forEach(function (h) {
-      var priceData = prices[h.symbol] || { price: 0, change24h: 0 };
-      h.price = priceData.price;
-      h.change24h = priceData.change24h;
-      h.value = h.quantity * h.price;
-      totalValue += h.value;
-    });
-
-    this.log("Total portfolio value updated");
-
-    var data = {
-      holdings: holdings,
-      totalValue: totalValue,
-      lastUpdated: new Date().toISOString(),
-      lastPriceUpdate: new Date().toISOString(),
-      hasError: !!this.lastError
-    };
-
-    try {
-      fs.writeFileSync(this.dataPath, JSON.stringify(data, null, 2));
-      this.log("Cache updated with " + holdings.length + " holdings");
-    } catch (err) {
-      this.logError("CACHE", "Failed to write cache file", err.message);
-      data.hasError = true;
-    }
-
-    this.sendSocketNotification("MMM-FINTECH_DATA", data);
   }
 });
