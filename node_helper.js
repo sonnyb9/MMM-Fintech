@@ -252,7 +252,7 @@ module.exports = NodeHelper.create({
       for (var i = 0; i < response.accounts.length; i++) {
         var account = response.accounts[i];
         var balance = parseFloat(account.available_balance.value);
-        if (balance > 0) {
+        if (balance > 0 && account.currency) {
           holdings.push({
             symbol: account.currency,
             quantity: balance,
