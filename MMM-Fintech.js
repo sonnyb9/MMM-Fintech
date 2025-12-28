@@ -3,7 +3,10 @@ Module.register("MMM-Fintech", {
     priceUpdateInterval: 5 * 60 * 1000,
     showLastUpdated: true,
     sortBy: "value",
-    title: "Holdings"
+    title: "Holdings",
+    holdingsSyncTime: "07:45",
+    staleHoldingsThreshold: 25 * 60 * 60 * 1000,
+    stalePricesThreshold: 65 * 60 * 1000
   },
 
   start: function () {
@@ -11,6 +14,7 @@ Module.register("MMM-Fintech", {
     this.holdings = [];
     this.totalValue = 0;
     this.lastUpdated = null;
+    this.lastPriceUpdate = null;
     this.hasError = false;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
@@ -33,18 +37,7 @@ Module.register("MMM-Fintech", {
 
     var header = document.createElement("div");
     header.className = "mmm-fintech-header";
-
-    var titleSpan = document.createElement("span");
-    titleSpan.innerHTML = this.config.title;
-    header.appendChild(titleSpan);
-
-    if (this.hasError) {
-      var errorSpan = document.createElement("span");
-      errorSpan.className = "mmm-fintech-error";
-      errorSpan.innerHTML = " ⚠ check logs";
-      header.appendChild(errorSpan);
-    }
-
+    header.innerHTML = this.config.title;
     wrapper.appendChild(header);
 
     if (!this.holdings.length) {
@@ -106,14 +99,56 @@ Module.register("MMM-Fintech", {
     totalDiv.innerHTML = "Total: " + this.formatCurrency(this.totalValue);
     wrapper.appendChild(totalDiv);
 
+    var warnings = this.getWarnings();
+    var isStale = this.isDataStale();
+
     if (this.config.showLastUpdated && this.lastUpdated) {
+      var timestampDiv = document.createElement("div");
+      timestampDiv.className = "dimmed xsmall mmm-fintech-timestamp";
+      if (isStale) {
+        timestampDiv.classList.add("stale");
+      }
+      timestampDiv.innerHTML = "Updated: " + this.formatTime(this.lastUpdated);
+      wrapper.appendChild(timestampDiv);
+    }
+
+    if (warnings.length > 0) {
       var footer = document.createElement("div");
-      footer.className = "dimmed xsmall mmm-fintech-footer";
-      footer.innerHTML = "Updated: " + this.formatTime(this.lastUpdated);
+      footer.className = "xsmall mmm-fintech-footer-warnings";
+      footer.innerHTML = warnings.join(" • ");
       wrapper.appendChild(footer);
     }
 
     return wrapper;
+  },
+
+  isDataStale: function () {
+    if (!this.lastUpdated || !this.lastPriceUpdate) {
+      return false;
+    }
+
+    var now = new Date();
+    var holdingsAge = now - new Date(this.lastUpdated);
+    var pricesAge = now - new Date(this.lastPriceUpdate);
+
+    var holdingsStale = holdingsAge > this.config.staleHoldingsThreshold;
+    var pricesStale = pricesAge > this.config.stalePricesThreshold;
+
+    return holdingsStale || pricesStale;
+  },
+
+  getWarnings: function () {
+    var warnings = [];
+
+    if (this.hasError) {
+      warnings.push("⚠ API errors detected");
+    }
+
+    if (this.isDataStale()) {
+      warnings.push("⚠ Stale data detected, check logs");
+    }
+
+    return warnings;
   },
 
   sortHoldings: function (holdings) {
@@ -157,6 +192,7 @@ Module.register("MMM-Fintech", {
       this.holdings = payload.holdings || [];
       this.totalValue = payload.totalValue || 0;
       this.lastUpdated = payload.lastUpdated || null;
+      this.lastPriceUpdate = payload.lastPriceUpdate || null;
       this.hasError = payload.hasError || false;
       this.updateDom();
     }

@@ -96,10 +96,13 @@ Add to your `config/config.js`:
 | `showLastUpdated` | true | Show last sync timestamp |
 | `sortBy` | "value" | Sort holdings by "value" or "name" |
 | `maxRetries` | 6 | Maximum API retry attempts with exponential backoff |
+| `holdingsSyncTime` | "07:45" | Daily holdings sync time in 24-hour format (HH:MM) |
+| `staleHoldingsThreshold` | 90000000 | Holdings considered stale after this many ms (25 hours) |
+| `stalePricesThreshold` | 3900000 | Prices considered stale after this many ms (65 minutes) |
 
 ## Scheduling
 
-- **Holdings sync**: Daily at 4am local time
+- **Holdings sync**: Daily at configured time (default: 7:45am), plus on startup if data >24 hours old
 - **Price updates**: Every 5 minutes (configurable)
 
 ## Files

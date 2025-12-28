@@ -75,7 +75,7 @@ module.exports = NodeHelper.create({
     }
 
     if (notification === "MMM-FINTECH_SYNC") {
-      this.syncHoldings();
+      this.syncIfStale();
       this.schedulePriceUpdates();
       this.scheduleNextHoldingsSync();
     }
@@ -96,29 +96,68 @@ module.exports = NodeHelper.create({
     }, interval);
   },
 
+  syncIfStale: function () {
+    var self = this;
+
+    if (!fs.existsSync(this.dataPath)) {
+      this.log("No cache file found, triggering holdings sync");
+      this.syncHoldings();
+      return;
+    }
+
+    try {
+      var cacheData = fs.readFileSync(this.dataPath, "utf8");
+      var cache = JSON.parse(cacheData);
+
+      if (!cache.lastUpdated) {
+        this.log("No lastUpdated timestamp, triggering holdings sync");
+        this.syncHoldings();
+        return;
+      }
+
+      var now = new Date();
+      var lastUpdate = new Date(cache.lastUpdated);
+      var ageHours = (now - lastUpdate) / (60 * 60 * 1000);
+
+      if (ageHours > 24) {
+        this.log("Holdings data is " + ageHours.toFixed(1) + " hours old (>24h), triggering sync");
+        this.syncHoldings();
+      } else {
+        this.log("Holdings data is " + ageHours.toFixed(1) + " hours old, no sync needed");
+      }
+    } catch (error) {
+      this.logError("SYNC_CHECK", "Failed to check cache staleness", error.message);
+      this.syncHoldings();
+    }
+  },
+
   scheduleNextHoldingsSync: function () {
     var self = this;
     var now = new Date();
-    var next4am = new Date(now);
+    var syncTime = this.config.holdingsSyncTime || "07:45";
+    var timeParts = syncTime.split(":");
+    var hours = parseInt(timeParts[0], 10);
+    var minutes = parseInt(timeParts[1], 10);
 
-    next4am.setHours(4, 0, 0, 0);
+    var nextSync = new Date(now);
+    nextSync.setHours(hours, minutes, 0, 0);
 
-    if (now >= next4am) {
-      next4am.setDate(next4am.getDate() + 1);
+    if (now >= nextSync) {
+      nextSync.setDate(nextSync.getDate() + 1);
     }
 
-    var msUntil4am = next4am.getTime() - now.getTime();
+    var msUntilSync = nextSync.getTime() - now.getTime();
 
     if (this.holdingsTimeout) {
       clearTimeout(this.holdingsTimeout);
     }
 
-    this.log("Next holdings sync scheduled for " + next4am.toLocaleString());
+    this.log("Next holdings sync scheduled for " + nextSync.toLocaleString());
 
     this.holdingsTimeout = setTimeout(function () {
       self.syncHoldings();
       self.scheduleNextHoldingsSync();
-    }, msUntil4am);
+    }, msUntilSync);
   },
 
   decrypt: function (encryptedBuffer, key) {

@@ -61,12 +61,32 @@
   text-align: right;
 }
 
-.mmm-fintech-footer {
+.mmm-fintech-timestamp {
   margin-top: 10px;
   text-align: right;
 }
 
-.mmm-fintech-error {
+.mmm-fintech-timestamp.stale {
+  color: #f55;
+}
+
+.mmm-fintech-footer-warnings {
+  margin-top: 10px;
+  text-align: center;
   color: #fa0;
-  font-size: 0.8em;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.mmm-fintech-footer-warnings.scrolling {
+  animation: scroll-left 15s linear infinite;
+}
+
+@keyframes scroll-left {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
 }
