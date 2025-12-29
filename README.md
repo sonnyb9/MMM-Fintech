@@ -128,6 +128,10 @@ Common errors:
 - `[HOLDINGS]` - Failed to fetch from Coinbase API
 - `[PRICE]` - Failed to fetch price for a symbol
 
+## Roadmap
+
+See [ROADMAP.md](ROADMAP.md) for planned features and development phases.
+
 ## License
 
 MIT

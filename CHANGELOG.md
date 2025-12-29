@@ -57,16 +57,4 @@ All notable changes to MMM-Fintech are documented in this file.
 
 ---
 
-## Roadmap
-
-### Phase 2 - Hardening
-- [x] Retry logic with exponential backoff
-- [ ] Stale data detection and alerts
-- [ ] Health notifications
-
-### Phase 3 - Fidelity via Plaid
-- [ ] Plaid Link integration
-- [ ] Fidelity account ingestion
-- [ ] Stock price integration
-- [ ] Percent change since last close for equities
-- [ ] Cost basis tracking
+For upcoming features and development phases, see [ROADMAP.md](ROADMAP.md).
