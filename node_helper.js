@@ -329,14 +329,16 @@ module.exports = NodeHelper.create({
       var holding = holdings[i];
       var symbol = holding.symbol;
 
+      var sources = holding.sources || (holding.source ? [holding.source] : []);
+
       if (merged[symbol]) {
         merged[symbol].quantity += holding.quantity;
-        merged[symbol].sources = merged[symbol].sources.concat(holding.sources);
+        merged[symbol].sources = merged[symbol].sources.concat(sources);
       } else {
         merged[symbol] = {
           symbol: symbol,
           quantity: holding.quantity,
-          sources: holding.sources.slice()
+          sources: sources.slice()
         };
       }
     }
