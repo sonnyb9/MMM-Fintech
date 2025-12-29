@@ -18,6 +18,8 @@ module.exports = NodeHelper.create({
     this.lastError = null;
     this.maxRetries = null;
     this.initialRetryDelay = 2000;
+    this.invalidSymbols = [];
+    this.rateLimitedSymbols = [];
   },
 
   log: function (msg) {
@@ -310,16 +312,35 @@ module.exports = NodeHelper.create({
     }
 
     var productId = symbol + "-USD";
-    var response = await this.makeAPIRequest("GET", "/api/v3/brokerage/market/products/" + productId, {});
+    
+    try {
+      var response = await this.makeAPIRequest("GET", "/api/v3/brokerage/market/products/" + productId, {});
 
-    if (response && response.price) {
-      return {
-        price: parseFloat(response.price),
-        change24h: parseFloat(response.price_percentage_change_24h || 0)
-      };
+      if (response && response.price) {
+        return {
+          price: parseFloat(response.price),
+          change24h: parseFloat(response.price_percentage_change_24h || 0)
+        };
+      }
+
+      throw new Error("No price data returned for " + symbol);
+    } catch (error) {
+      var errorMessage = error.message || "";
+      
+      if (errorMessage.includes("404") || errorMessage.includes("not found") || errorMessage.includes("INVALID_SYMBOL")) {
+        var symbolError = new Error("Invalid or unavailable symbol: " + symbol);
+        symbolError.code = "INVALID_SYMBOL";
+        throw symbolError;
+      }
+      
+      if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
+        var rateLimitError = new Error("Rate limit exceeded for " + symbol);
+        rateLimitError.code = "RATE_LIMIT";
+        throw rateLimitError;
+      }
+      
+      throw error;
     }
-
-    throw new Error("No price data returned for " + symbol);
   },
 
   mergeHoldings: function (holdings) {
@@ -397,7 +418,19 @@ module.exports = NodeHelper.create({
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
         } catch (error) {
-          this.logError("PRICE_FETCH", "Failed to fetch price for " + holding.symbol, error.message);
+          if (error.code === "INVALID_SYMBOL") {
+            if (this.invalidSymbols.indexOf(holding.symbol) === -1) {
+              this.invalidSymbols.push(holding.symbol);
+            }
+            this.logError("INVALID_SYMBOL", "Invalid or unavailable symbol", holding.symbol);
+          } else if (error.code === "RATE_LIMIT") {
+            if (this.rateLimitedSymbols.indexOf(holding.symbol) === -1) {
+              this.rateLimitedSymbols.push(holding.symbol);
+            }
+            this.logError("RATE_LIMIT", "Rate limit exceeded for symbol", holding.symbol);
+          } else {
+            this.logError("PRICE_FETCH", "Failed to fetch price for " + holding.symbol, error.message);
+          }
           holding.price = 0;
           holding.change24h = 0;
           holding.value = 0;
@@ -414,7 +447,9 @@ module.exports = NodeHelper.create({
         totalValue: totalValue,
         lastUpdated: new Date().toISOString(),
         lastPriceUpdate: new Date().toISOString(),
-        hasError: this.lastError !== null
+        hasError: this.lastError !== null,
+        invalidSymbols: this.invalidSymbols,
+        rateLimitedSymbols: this.rateLimitedSymbols
       };
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
@@ -456,7 +491,19 @@ module.exports = NodeHelper.create({
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
         } catch (error) {
-          this.logError("PRICE_UPDATE", "Failed to update price for " + holding.symbol, error.message);
+          if (error.code === "INVALID_SYMBOL") {
+            if (this.invalidSymbols.indexOf(holding.symbol) === -1) {
+              this.invalidSymbols.push(holding.symbol);
+            }
+            this.logError("INVALID_SYMBOL", "Invalid or unavailable symbol", holding.symbol);
+          } else if (error.code === "RATE_LIMIT") {
+            if (this.rateLimitedSymbols.indexOf(holding.symbol) === -1) {
+              this.rateLimitedSymbols.push(holding.symbol);
+            }
+            this.logError("RATE_LIMIT", "Rate limit exceeded for symbol", holding.symbol);
+          } else {
+            this.logError("PRICE_UPDATE", "Failed to update price for " + holding.symbol, error.message);
+          }
         }
       }
 
@@ -468,6 +515,8 @@ module.exports = NodeHelper.create({
       cache.totalValue = totalValue;
       cache.lastPriceUpdate = new Date().toISOString();
       cache.hasError = this.lastError !== null;
+      cache.invalidSymbols = this.invalidSymbols;
+      cache.rateLimitedSymbols = this.rateLimitedSymbols;
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
       this.log("Prices updated");

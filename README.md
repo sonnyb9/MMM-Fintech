@@ -47,7 +47,7 @@ This will:
 
 ### 3. Add Manual Holdings (Optional)
 
-For staked assets or holdings not returned by the API, create `manual-holdings.json`:
+For staked assets or holdings not returned by the API, create `manual-holdings.json` in the module folder:
 
 ```json
 {
@@ -68,6 +68,46 @@ For staked assets or holdings not returned by the API, create `manual-holdings.j
     }
   ]
 }
+```
+
+**Finding Valid Symbols:**
+
+Crypto symbols must match Coinbase's ticker format:
+- Use uppercase (e.g., `BTC`, `ETH`, `SOL`)
+- Must be available on Coinbase Advanced Trade
+- Check available symbols: [Coinbase Advanced Trade](https://www.coinbase.com/advanced-trade)
+- Common symbols: `BTC`, `ETH`, `SOL`, `USDC`, `MATIC`, `AVAX`, `LINK`, `UNI`
+
+**Verifying Symbols Work:**
+
+After adding symbols to `manual-holdings.json`, check the logs:
+
+```bash
+pm2 logs magicmirror --lines 50 | grep -E "(Failed to fetch price|No price data)"
+```
+
+If you see errors for a specific symbol, it may be:
+- Misspelled or incorrectly formatted
+- Not available on Coinbase Advanced Trade
+- Delisted or suspended from trading
+
+**What Happens with Invalid Symbols:**
+
+If a symbol in `manual-holdings.json` is invalid:
+- The holding will display with $0.00 price and value
+- An error will be logged: `Failed to fetch price for SYMBOL`
+- The footer may show: "⚠ Invalid symbol 'SYMBOL' in manual holdings"
+- Other valid holdings will continue to work normally
+
+**Troubleshooting Invalid Symbols:**
+
+```bash
+# Check which symbols are failing
+pm2 logs magicmirror --lines 100 | grep "Failed to fetch price for"
+
+# Verify symbol exists on Coinbase
+# Visit: https://www.coinbase.com/advanced-trade/spot/SYMBOL-USD
+# Example: https://www.coinbase.com/advanced-trade/spot/BTC-USD
 ```
 
 ### 4. Configure MagicMirror
@@ -117,16 +157,158 @@ Add to your `config/config.js`:
 
 ## Troubleshooting
 
-If you see the ⚠ warning indicator, check logs:
+If you see the ⚠ warning indicator, check the logs using the commands below.
 
+### Error: "Crypto holdings data is N hours old"
+
+**Check sync logs:**
 ```bash
-pm2 logs magicmirror
+pm2 logs magicmirror --lines 100 | grep -E "(Holdings sync|syncIfStale|scheduleNextHoldingsSync)"
 ```
 
-Common errors:
-- `[CREDENTIALS]` - Encryption key or credentials file missing
-- `[HOLDINGS]` - Failed to fetch from Coinbase API
-- `[PRICE]` - Failed to fetch price for a symbol
+**Check for sync errors:**
+```bash
+pm2 logs magicmirror --lines 100 | grep -E "ERROR.*SYNC"
+```
+
+**Verify next sync time:**
+Look for log message: "Next holdings sync scheduled for..."
+
+**Common causes:**
+- Sync scheduler not running (module not initialized properly)
+- Sync failed due to API error (check ERROR logs above)
+- Pi was powered off during scheduled sync time
+- Clock/timezone issue on Pi
+
+**Fix:**
+```bash
+pm2 restart magicmirror
+```
+
+### Error: "Coinbase sync failed N times, retrying..."
+
+**Check sync failure details:**
+```bash
+pm2 logs magicmirror --lines 100 | grep -E "Holdings Fetch.*failed|SYNC.*failed"
+```
+
+**Check API response:**
+```bash
+pm2 logs magicmirror --lines 100 | grep "API request failed"
+```
+
+**Verify credentials exist:**
+```bash
+ls -la ~/.mmm-fintech-key ~/MagicMirror/modules/MMM-Fintech/cdp-credentials.enc
+```
+
+**Common causes:**
+- API key expired or revoked
+- Network connectivity issues
+- Coinbase API outage
+- Rate limit exceeded (unlikely with daily sync)
+- Credentials file corrupted or missing
+
+**Fix:**
+```bash
+# If credentials issue, re-run setup
+cd ~/MagicMirror/modules/MMM-Fintech
+node setup-credentials.js
+```
+
+### Error: "Crypto price updates failing"
+
+**Check price update logs:**
+```bash
+pm2 logs magicmirror --lines 100 | grep -E "Price Update.*failed|PRICE_UPDATE"
+```
+
+**Check which symbols are failing:**
+```bash
+pm2 logs magicmirror --lines 100 | grep "Failed to update price for"
+```
+
+**Common causes:**
+- Specific symbol unavailable on Coinbase (e.g., delisted)
+- Symbol in `manual-holdings.json` is misspelled or invalid
+- API rate limit (unlikely at 5min intervals)
+- Network timeout
+
+**Fix:**
+```bash
+# Verify symbol exists on Coinbase
+# Visit: https://www.coinbase.com/advanced-trade/spot/SYMBOL-USD
+
+# If symbol is invalid, edit manual-holdings.json:
+nano ~/MagicMirror/modules/MMM-Fintech/manual-holdings.json
+# Remove or correct the invalid symbol
+
+# Restart to apply changes:
+pm2 restart magicmirror
+```
+
+### Error: "Invalid symbol 'XYZ' in manual holdings"
+
+**Check manual holdings file:**
+```bash
+cat ~/MagicMirror/modules/MMM-Fintech/manual-holdings.json
+```
+
+**Verify symbol format:**
+- Must be uppercase (e.g., `BTC`, not `btc`)
+- Must match Coinbase ticker exactly
+- Must be available on Coinbase Advanced Trade
+
+**Fix:**
+```bash
+# Edit manual holdings:
+nano ~/MagicMirror/modules/MMM-Fintech/manual-holdings.json
+
+# Correct the symbol or remove the entry
+# Save and restart:
+pm2 restart magicmirror
+```
+
+### Error: "[CREDENTIALS] - Encryption key or credentials file missing"
+
+**Check if files exist:**
+```bash
+ls -la ~/.mmm-fintech-key
+ls -la ~/MagicMirror/modules/MMM-Fintech/cdp-credentials.enc
+```
+
+**Common causes:**
+- Setup script not run: `setup-credentials.js` not executed
+- Encryption key accidentally deleted
+- Running on different user account than setup
+
+**Fix:**
+```bash
+cd ~/MagicMirror/modules/MMM-Fintech
+node setup-credentials.js
+```
+
+### General Debugging
+
+**View all MMM-Fintech logs:**
+```bash
+pm2 logs magicmirror | grep MMM-Fintech
+```
+
+**View last 100 lines:**
+```bash
+pm2 logs magicmirror --lines 100
+```
+
+**Follow logs in real-time:**
+```bash
+pm2 logs magicmirror --lines 0
+```
+
+**Check module is loaded:**
+```bash
+pm2 logs magicmirror --lines 50 | grep "MMM-Fintech node_helper started"
+```
 
 ## Roadmap
 
