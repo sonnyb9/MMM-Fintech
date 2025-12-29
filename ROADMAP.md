@@ -43,20 +43,67 @@ Improve reliability and user feedback for production use.
 
 ## 📋 Phase 3 - Multi-Asset Support
 
-**Status**: Planned
+**Status**: Planning complete, ready for implementation
 
-Expand beyond cryptocurrency to support stocks, ETFs, and mutual funds.
+Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 
 ### 3.1 - Twelve Data Integration
 
-Add support for traditional financial assets via Twelve Data API.
+Add support for traditional financial assets and forex via Twelve Data API.
 
-- [ ] Twelve Data API integration
-- [ ] Support for stocks, ETFs, mutual funds, forex
-- [ ] Encrypted API key storage for Twelve Data
-- [ ] Price per unit/share column
-- [ ] Asset type identification and display
-- [ ] Unified pricing updates across all asset types
+**Technical Approach**:
+- Manual entry for holdings (similar to crypto staking)
+- Coinbase API for crypto pricing
+- Twelve Data API for stocks, ETFs, mutual funds, and forex pricing
+- Two separate displays: Holdings table and Forex rates table
+
+**Asset Types**:
+- `crypto` - Cryptocurrency (via Coinbase)
+- `stock` - Individual stocks (via Twelve Data)
+- `etf` - Exchange-traded funds (via Twelve Data)
+- `mutual_fund` - Mutual funds (via Twelve Data)
+- `forex` - Foreign exchange rates (via Twelve Data, display only)
+
+**Implementation Tasks**:
+- [ ] Credential management for Twelve Data API key (encrypted storage)
+- [ ] Update `manual-holdings.json` structure with `holdings` and `forex` arrays
+- [ ] Add asset type detection and routing logic
+- [ ] Implement Twelve Data `/quote` endpoint integration
+- [ ] Add configurable update intervals:
+  - Crypto prices: 5 minutes (existing)
+  - Stocks/ETFs/Mutual Funds/Forex: 20 minutes (new, configurable)
+- [ ] Add "Price/Unit" column to holdings table
+- [ ] Create separate forex rates display section
+- [ ] Display inverse forex rates (e.g., USD/PHP and PHP/USD)
+- [ ] Format forex rates to 2 decimal places
+- [ ] API rate limit management (800 calls/day free tier)
+
+**API Budget** (Free tier: 800 calls/day):
+- Holdings sync (7:45am): ~10 calls
+- Price updates (every 20 min): ~10 symbols × 72 updates/day = 720 calls
+- **Total**: ~730 calls/day ✅
+
+**Configuration Changes**:
+```javascript
+{
+  priceUpdateInterval: 5 * 60 * 1000,      // Crypto: 5 min
+  stockUpdateInterval: 20 * 60 * 1000,     // Stocks/Forex: 20 min
+}
+```
+
+**Manual Holdings Structure**:
+```json
+{
+  "holdings": [
+    {"symbol": "SOL", "quantity": 12.919, "type": "crypto", "source": "coinbase-staked"},
+    {"symbol": "AAPL", "quantity": 50, "type": "stock", "source": "fidelity"}
+  ],
+  "forex": [
+    {"pair": "USD/PHP", "type": "forex"},
+    {"pair": "USD/EUR", "type": "forex"}
+  ]
+}
+```
 
 ### 3.2 - Brokerage Integration (Fidelity via Plaid)
 
