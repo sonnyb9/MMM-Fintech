@@ -322,6 +322,35 @@ module.exports = NodeHelper.create({
     throw new Error("No price data returned for " + symbol);
   },
 
+  mergeHoldings: function (holdings) {
+    var merged = {};
+
+    for (var i = 0; i < holdings.length; i++) {
+      var holding = holdings[i];
+      var symbol = holding.symbol;
+
+      if (merged[symbol]) {
+        merged[symbol].quantity += holding.quantity;
+        merged[symbol].sources = merged[symbol].sources.concat(holding.sources);
+      } else {
+        merged[symbol] = {
+          symbol: symbol,
+          quantity: holding.quantity,
+          sources: holding.sources.slice()
+        };
+      }
+    }
+
+    var result = [];
+    for (var key in merged) {
+      if (merged.hasOwnProperty(key)) {
+        result.push(merged[key]);
+      }
+    }
+
+    return result;
+  },
+
   syncHoldings: async function () {
     var self = this;
     this.log("Starting holdings sync...");
@@ -348,7 +377,9 @@ module.exports = NodeHelper.create({
         }
       }
 
-      var allHoldings = apiHoldings.concat(manualHoldings);
+      var combinedHoldings = apiHoldings.concat(manualHoldings);
+      var allHoldings = this.mergeHoldings(combinedHoldings);
+      this.log("Merged into " + allHoldings.length + " unique holdings");
 
       for (var i = 0; i < allHoldings.length; i++) {
         var holding = allHoldings[i];
