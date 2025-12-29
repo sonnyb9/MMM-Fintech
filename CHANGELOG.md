@@ -2,6 +2,44 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.4.0] - 2025-12-29
+
+### Added
+- **Stale Data Detection**: Visual indicators when holdings or prices are stale
+  - Red timestamp when data exceeds configured thresholds
+  - Configurable thresholds: `staleHoldingsThreshold` (25 hours) and `stalePricesThreshold` (65 minutes)
+  - On-startup sync if holdings >24 hours old
+- **Health Notifications**: Enhanced footer warnings with severity levels
+  - Three severity colors: warning (yellow), error (orange), critical (red)
+  - Specific error messages: invalid symbols, rate limits, stale data, API failures
+  - Footer only shows when warnings exist
+- **Enhanced Error Handling**: Distinguish between error types
+  - Invalid/unavailable symbols (404 errors)
+  - Rate limit exceeded (429 errors)
+  - Temporary API failures
+  - Tracked separately for targeted troubleshooting
+- **Configurable Holdings Sync Time**: `holdingsSyncTime` option (default: "07:45")
+- **Symbol Validation**: Comprehensive documentation for finding and verifying crypto symbols
+- **Duplicate Holdings Merge**: Combine same symbol from API and manual sources into single row
+  - Supports both `source` (string) and `sources` (array) formats
+  - Merged sources tracked for transparency
+
+### Changed
+- Holdings sync schedule moved from 4:00am to 7:45am (configurable)
+- Footer warnings now use bullet separator (•) for multiple messages
+- Error logging includes specific categories: INVALID_SYMBOL, RATE_LIMIT, PRICE_FETCH, PRICE_UPDATE
+- Cache now includes `invalidSymbols` and `rateLimitedSymbols` arrays
+
+### Fixed
+- Manual holdings with duplicate symbols (e.g., staked + unstaked ETH) now display as single row
+- Holdings merge handles inconsistent source/sources field formats
+
+### Documentation
+- Comprehensive troubleshooting section with specific commands for each error type
+- Symbol validation guide with Coinbase Advanced Trade link
+- Detailed error message explanations with common causes and fixes
+- ROADMAP.md created with Phase 3 planning details
+
 ## [0.3.0] - 2025-12-27
 
 ### Added

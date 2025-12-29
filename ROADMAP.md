@@ -19,9 +19,9 @@ Core functionality for cryptocurrency tracking via Coinbase CDP API.
 - Error handling with warning indicator
 - Retry logic with exponential backoff
 
-## 🚧 Phase 2 - Hardening (In Progress)
+## 🎉 Phase 2 - Hardening (Complete)
 
-**Status**: 2 of 3 items complete (v0.4.0 in development)
+**Status**: Released in v0.4.0
 
 Improve reliability and user feedback for production use.
 
@@ -33,13 +33,14 @@ Improve reliability and user feedback for production use.
 - ✅ **Stale data detection and alerts** (v0.4.0)
   - Visual indicators for stale data (red timestamp)
   - Footer warnings for API errors and stale data
-  - Configurable thresholds for holdings and prices
+  - Configurable thresholds for holdings (25h) and prices (65m)
   - On-startup sync if holdings >24 hours old
 
-- ⏳ **Health notifications** (Planned)
-  - Email/webhook notifications for persistent errors
-  - Daily health report summary
-  - Configurable notification thresholds
+- ✅ **Health notifications** (v0.4.0)
+  - Severity-based footer warnings (warning/error/critical)
+  - Specific messages for invalid symbols, rate limits, stale data
+  - Enhanced error categorization and tracking
+  - Footer only displays when warnings exist
 
 ## 📋 Phase 3 - Multi-Asset Support
 
@@ -158,7 +159,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
-- **v0.4.0** (In Progress) - Phase 2: Stale data detection
+- **v0.4.0** (2025-12-29) - Phase 2 complete: Stale data detection, health notifications, enhanced error handling
 - **v0.3.0** (2025-12-27) - Phase 2: Retry logic with exponential backoff
 - **v0.2.0** (2025-12-26) - Phase 1: Coinbase PoC complete
 - **v0.1.0** (2025-12-26) - Initial module skeleton
