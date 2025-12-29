@@ -16,6 +16,8 @@ Module.register("MMM-Fintech", {
     this.lastUpdated = null;
     this.lastPriceUpdate = null;
     this.hasError = false;
+    this.invalidSymbols = [];
+    this.rateLimitedSymbols = [];
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
@@ -99,7 +101,7 @@ Module.register("MMM-Fintech", {
     totalDiv.innerHTML = "Total: " + this.formatCurrency(this.totalValue);
     wrapper.appendChild(totalDiv);
 
-    var warnings = this.getWarnings();
+    var warningData = this.getWarnings();
     var isStale = this.isDataStale();
 
     if (this.config.showLastUpdated && this.lastUpdated) {
@@ -112,10 +114,10 @@ Module.register("MMM-Fintech", {
       wrapper.appendChild(timestampDiv);
     }
 
-    if (warnings.length > 0) {
+    if (warningData.messages.length > 0) {
       var footer = document.createElement("div");
-      footer.className = "xsmall mmm-fintech-footer-warnings";
-      footer.innerHTML = warnings.join(" • ");
+      footer.className = "xsmall mmm-fintech-footer-warnings " + warningData.severity;
+      footer.innerHTML = warningData.messages.join(" • ");
       wrapper.appendChild(footer);
     }
 
@@ -139,16 +141,49 @@ Module.register("MMM-Fintech", {
 
   getWarnings: function () {
     var warnings = [];
+    var severity = "warning";
 
-    if (this.hasError) {
-      warnings.push("⚠ API errors detected");
+    if (this.invalidSymbols && this.invalidSymbols.length > 0) {
+      if (this.invalidSymbols.length === 1) {
+        warnings.push("⚠ Invalid symbol '" + this.invalidSymbols[0] + "' in manual holdings");
+      } else {
+        warnings.push("⚠ " + this.invalidSymbols.length + " invalid symbols: " + this.invalidSymbols.join(", "));
+      }
+      severity = "error";
+    }
+
+    if (this.rateLimitedSymbols && this.rateLimitedSymbols.length > 0) {
+      warnings.push("⚠ Rate limit hit for " + this.rateLimitedSymbols.length + " symbol(s)");
+      severity = "error";
     }
 
     if (this.isDataStale()) {
-      warnings.push("⚠ Stale data detected, check logs");
+      var now = new Date();
+      var holdingsAge = (now - new Date(this.lastUpdated)) / (60 * 60 * 1000);
+      var pricesAge = (now - new Date(this.lastPriceUpdate)) / (60 * 1000);
+
+      if (holdingsAge > 48) {
+        warnings.push("⚠ Crypto holdings data is " + holdingsAge.toFixed(1) + " hours old");
+        severity = "critical";
+      } else if (holdingsAge > 25) {
+        warnings.push("⚠ Crypto holdings data is " + holdingsAge.toFixed(1) + " hours old");
+        severity = "warning";
+      }
+
+      if (pricesAge > 120) {
+        warnings.push("⚠ Crypto price updates failing");
+        if (severity !== "critical") {
+          severity = "error";
+        }
+      }
     }
 
-    return warnings;
+    if (this.hasError && warnings.length === 0) {
+      warnings.push("⚠ API errors detected, check logs");
+      severity = "error";
+    }
+
+    return { messages: warnings, severity: severity };
   },
 
   sortHoldings: function (holdings) {
@@ -194,6 +229,8 @@ Module.register("MMM-Fintech", {
       this.lastUpdated = payload.lastUpdated || null;
       this.lastPriceUpdate = payload.lastPriceUpdate || null;
       this.hasError = payload.hasError || false;
+      this.invalidSymbols = payload.invalidSymbols || [];
+      this.rateLimitedSymbols = payload.rateLimitedSymbols || [];
       this.updateDom();
     }
   }

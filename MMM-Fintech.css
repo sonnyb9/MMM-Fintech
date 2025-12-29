@@ -73,9 +73,20 @@
 .mmm-fintech-footer-warnings {
   margin-top: 10px;
   text-align: center;
-  color: #fa0;
   overflow: hidden;
   white-space: nowrap;
+}
+
+.mmm-fintech-footer-warnings.warning {
+  color: #ffa500;
+}
+
+.mmm-fintech-footer-warnings.error {
+  color: #ff8c00;
+}
+
+.mmm-fintech-footer-warnings.critical {
+  color: #ff0000;
 }
 
 .mmm-fintech-footer-warnings.scrolling {
