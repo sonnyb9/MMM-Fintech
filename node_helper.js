@@ -79,7 +79,11 @@ module.exports = NodeHelper.create({
       return this.providers[providerName];
     }
 
-    return this.providers.coinbase;
+    if (assetType === "crypto") {
+      return this.providers.coinbase;
+    }
+
+    return this.providers.twelvedata || null;
   },
 
   schedulePriceUpdates: function() {
@@ -167,12 +171,13 @@ module.exports = NodeHelper.create({
       var symbol = holding.symbol;
       var sources = holding.sources || (holding.source ? [holding.source] : []);
       var type = holding.type || "crypto";
+      var mergeKey = symbol + ":" + type;
 
-      if (merged[symbol]) {
-        merged[symbol].quantity += holding.quantity;
-        merged[symbol].sources = merged[symbol].sources.concat(sources);
+      if (merged[mergeKey]) {
+        merged[mergeKey].quantity += holding.quantity;
+        merged[mergeKey].sources = merged[mergeKey].sources.concat(sources);
       } else {
-        merged[symbol] = {
+        merged[mergeKey] = {
           symbol: symbol,
           quantity: holding.quantity,
           type: type,
@@ -189,6 +194,80 @@ module.exports = NodeHelper.create({
     }
 
     return result;
+  },
+
+  loadManualData: function() {
+    var result = {
+      holdings: [],
+      forex: []
+    };
+
+    if (!fs.existsSync(this.manualHoldingsPath)) {
+      return result;
+    }
+
+    try {
+      var manualData = fs.readFileSync(this.manualHoldingsPath, "utf8");
+      var parsed = JSON.parse(manualData);
+
+      if (parsed.holdings && Array.isArray(parsed.holdings)) {
+        result.holdings = parsed.holdings;
+      }
+
+      if (parsed.forex && Array.isArray(parsed.forex)) {
+        result.forex = parsed.forex;
+      }
+
+      this.log("Loaded " + result.holdings.length + " manual holdings, " + result.forex.length + " forex pairs");
+    } catch (error) {
+      this.logError("MANUAL_HOLDINGS", "Failed to load manual holdings", error.message);
+    }
+
+    return result;
+  },
+
+  fetchForexRates: async function(forexPairs) {
+    var self = this;
+    var rates = [];
+
+    if (!this.providers.twelvedata) {
+      this.log("TwelveData provider not available for forex");
+      return rates;
+    }
+
+    for (var i = 0; i < forexPairs.length; i++) {
+      var pair = forexPairs[i].pair;
+
+      try {
+        var rateData = await this.providers.twelvedata.fetchForexRate(pair);
+        rates.push({
+          pair: pair,
+          rate: rateData.rate,
+          timestamp: rateData.timestamp
+        });
+
+        var parts = pair.split("/");
+        if (parts.length === 2) {
+          var inversePair = parts[1] + "/" + parts[0];
+          var inverseRate = 1 / rateData.rate;
+          rates.push({
+            pair: inversePair,
+            rate: inverseRate,
+            timestamp: rateData.timestamp,
+            isInverse: true
+          });
+        }
+      } catch (error) {
+        this.logError("FOREX", "Failed to fetch rate for " + pair, error.message);
+        rates.push({
+          pair: pair,
+          rate: 0,
+          error: true
+        });
+      }
+    }
+
+    return rates;
   },
 
   syncHoldings: async function() {
@@ -208,19 +287,8 @@ module.exports = NodeHelper.create({
         }
       }
 
-      var manualHoldings = [];
-      if (fs.existsSync(this.manualHoldingsPath)) {
-        try {
-          var manualData = fs.readFileSync(this.manualHoldingsPath, "utf8");
-          var parsed = JSON.parse(manualData);
-          manualHoldings = parsed.holdings || [];
-          this.log("Loaded " + manualHoldings.length + " manual holdings");
-        } catch (error) {
-          this.logError("MANUAL_HOLDINGS", "Failed to load manual holdings", error.message);
-        }
-      }
-
-      var combinedHoldings = apiHoldings.concat(manualHoldings);
+      var manualData = this.loadManualData();
+      var combinedHoldings = apiHoldings.concat(manualData.holdings);
       var allHoldings = this.mergeHoldings(combinedHoldings);
       this.log("Merged into " + allHoldings.length + " unique holdings");
 
@@ -229,7 +297,7 @@ module.exports = NodeHelper.create({
         var provider = this.getProviderForSymbol(holding);
 
         if (!provider) {
-          this.logError("PROVIDER", "No provider available for " + holding.symbol);
+          this.logError("PROVIDER", "No provider available for " + holding.symbol + " (type: " + holding.type + ")");
           holding.price = 0;
           holding.change24h = 0;
           holding.value = 0;
@@ -261,6 +329,11 @@ module.exports = NodeHelper.create({
         }
       }
 
+      var forexRates = [];
+      if (manualData.forex.length > 0) {
+        forexRates = await this.fetchForexRates(manualData.forex);
+      }
+
       var totalValue = 0;
       for (var j = 0; j < allHoldings.length; j++) {
         totalValue += allHoldings[j].value;
@@ -268,6 +341,7 @@ module.exports = NodeHelper.create({
 
       var cache = {
         holdings: allHoldings,
+        forex: forexRates,
         totalValue: totalValue,
         lastUpdated: new Date().toISOString(),
         lastPriceUpdate: new Date().toISOString(),
@@ -277,7 +351,7 @@ module.exports = NodeHelper.create({
       };
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
-      this.log("Cache updated with " + allHoldings.length + " holdings");
+      this.log("Cache updated with " + allHoldings.length + " holdings and " + forexRates.length + " forex rates");
 
       this.clearError();
       this.sendSocketNotification("MMM-FINTECH_DATA", cache);
@@ -329,6 +403,11 @@ module.exports = NodeHelper.create({
             this.logError("PRICE_UPDATE", "Failed to update price for " + holding.symbol, error.message);
           }
         }
+      }
+
+      var manualData = this.loadManualData();
+      if (manualData.forex.length > 0) {
+        cache.forex = await this.fetchForexRates(manualData.forex);
       }
 
       var totalValue = 0;

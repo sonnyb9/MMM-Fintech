@@ -1,0 +1,42 @@
+{
+  "description": "Example manual-holdings.json structure for Phase 3",
+  "lastUpdated": "2025-12-29T00:00:00Z",
+  "holdings": [
+    {
+      "symbol": "SOL",
+      "quantity": 12.91904735,
+      "type": "crypto",
+      "source": "coinbase-staked",
+      "notes": "100% staked"
+    },
+    {
+      "symbol": "ETH",
+      "quantity": 0.38046338,
+      "type": "crypto",
+      "source": "coinbase-staked",
+      "notes": "Staked ETH"
+    },
+    {
+      "symbol": "AAPL",
+      "quantity": 50,
+      "type": "stock",
+      "source": "fidelity"
+    },
+    {
+      "symbol": "SPY",
+      "quantity": 10,
+      "type": "etf",
+      "source": "fidelity"
+    },
+    {
+      "symbol": "FXAIX",
+      "quantity": 100,
+      "type": "mutual_fund",
+      "source": "fidelity-401k"
+    }
+  ],
+  "forex": [
+    { "pair": "USD/PHP" },
+    { "pair": "USD/EUR" }
+  ]
+}
