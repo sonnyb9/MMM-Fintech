@@ -2,6 +2,47 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.5.0] - 2025-12-29
+
+### Added
+- **Provider Architecture**: Modular system for multiple data sources
+  - Base provider class with shared utilities (encryption, logging, retry)
+  - Coinbase provider extracted from monolithic node_helper
+  - Twelve Data provider for stocks, ETFs, mutual funds, forex
+  - Factory functions for provider creation and asset type routing
+- **Twelve Data Integration**: Support for traditional financial assets
+  - Stocks, ETFs, mutual funds pricing via `/quote` endpoint
+  - Forex rates via `/exchange_rate` endpoint
+  - Automatic inverse forex pair generation (USD/PHP → PHP/USD)
+  - Credit tracking via response headers
+  - Encrypted credential storage (`setup-twelvedata.js`)
+- **Multi-Asset Support**: Track crypto and traditional investments together
+  - Asset type field (`crypto`, `stock`, `etf`, `mutual_fund`, `forex`)
+  - Provider routing based on asset type
+  - Merge key changed to `symbol:type` to prevent cross-asset conflicts
+- **Separate Update Intervals**: Different frequencies by asset class
+  - Crypto prices: every 5 minutes (configurable via `cryptoPriceUpdateInterval`)
+  - Stock/ETF/Forex prices: every 20 minutes (configurable via `stockPriceUpdateInterval`)
+  - Stays within Twelve Data free tier (800 calls/day)
+- **Price Per Unit Column**: New column showing price for each holding
+  - Configurable via `showPricePerUnit` (default: true)
+- **Forex Display Section**: Separate section for exchange rates
+  - Shows all configured forex pairs with rates
+  - Configurable via `showForex` (default: true)
+  - Smart formatting based on rate magnitude
+
+### Changed
+- `priceUpdateInterval` split into `cryptoPriceUpdateInterval` and `stockPriceUpdateInterval`
+- Manual holdings structure now requires `type` field for each holding
+- Manual holdings file now supports `forex` array for exchange rate pairs
+- Cache now tracks `lastCryptoPriceUpdate` and `lastStockPriceUpdate` separately
+- Provider initialization: Coinbase required, Twelve Data optional
+
+### Documentation
+- AI-CONTEXT.md updated with provider architecture details
+- README.md updated with multi-asset setup instructions
+- ROADMAP.md Phase 3.1 marked complete
+
 ## [0.4.0] - 2025-12-29
 
 ### Added

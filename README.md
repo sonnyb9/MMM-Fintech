@@ -1,16 +1,19 @@
 # MMM-Fintech
 
-A MagicMirror² module for displaying consolidated cryptocurrency holdings with real-time pricing.
+A MagicMirror² module for displaying consolidated financial holdings with real-time pricing.
 
 ## Features
 
-- **Coinbase Integration**: Fetches holdings via CDP API
-- **Manual Holdings**: Support for staked assets not returned by API
-- **Real-time Pricing**: Configurable update interval (default: 5 minutes)
+- **Multi-Asset Support**: Crypto, stocks, ETFs, mutual funds, and forex
+- **Coinbase Integration**: Fetches crypto holdings via CDP API
+- **Twelve Data Integration**: Stocks, ETFs, mutual funds, and forex pricing
+- **Manual Holdings**: Support for staked assets and brokerage positions
+- **Real-time Pricing**: Configurable update intervals by asset type
 - **24h Change**: Shows percent change for each holding
 - **Portfolio Total**: Displays total USD value
+- **Forex Rates**: Display exchange rates with automatic inverse pairs
 - **Secure Credentials**: AES-256-GCM encrypted API keys
-- **Error Indicators**: Visual warning when sync fails
+- **Error Indicators**: Visual warnings when sync fails
 - **Configurable Sorting**: By value or alphabetically
 
 ## Installation
@@ -24,7 +27,7 @@ npm install
 
 ## Setup
 
-### 1. Create Coinbase API Key
+### 1. Create Coinbase API Key (for crypto)
 
 1. Go to [CDP Portal](https://portal.cdp.coinbase.com/)
 2. Create a **Secret API key**
@@ -32,7 +35,7 @@ npm install
 4. Select **ECDSA** algorithm (required for SDK)
 5. Download the JSON file
 
-### 2. Encrypt Credentials
+### 2. Encrypt Coinbase Credentials
 
 Place the downloaded `cdp_api_key.json` in the module folder, then run:
 
@@ -45,72 +48,65 @@ This will:
 - Create `cdp-credentials.enc` from your JSON file
 - Prompt to delete the original JSON (recommended)
 
-### 3. Add Manual Holdings (Optional)
+### 3. Create Twelve Data API Key (for stocks/forex)
 
-For staked assets or holdings not returned by the API, create `manual-holdings.json` in the module folder:
+1. Go to [Twelve Data](https://twelvedata.com/)
+2. Create a free account
+3. Copy your API key from the dashboard
+
+### 4. Encrypt Twelve Data Credentials
+
+```bash
+node setup-twelvedata.js
+```
+
+Enter your API key when prompted. This creates `twelvedata-credentials.enc`.
+
+### 5. Add Manual Holdings
+
+Create `manual-holdings.json` in the module folder:
 
 ```json
 {
-  "description": "Manual holdings not returned by Coinbase API",
-  "lastUpdated": "2025-12-26T00:00:00Z",
+  "description": "Manual holdings and forex pairs",
+  "lastUpdated": "2025-12-29T00:00:00Z",
   "holdings": [
     {
       "symbol": "SOL",
       "quantity": 12.919,
+      "type": "crypto",
       "source": "coinbase-staked",
       "notes": "100% staked"
     },
     {
-      "symbol": "ETH",
-      "quantity": 0.380,
-      "source": "coinbase-staked",
-      "notes": "Staked ETH"
+      "symbol": "AAPL",
+      "quantity": 50,
+      "type": "stock",
+      "source": "fidelity"
+    },
+    {
+      "symbol": "VOO",
+      "quantity": 25,
+      "type": "etf",
+      "source": "fidelity"
     }
+  ],
+  "forex": [
+    {"pair": "USD/PHP"},
+    {"pair": "USD/EUR"}
   ]
 }
 ```
 
-**Finding Valid Symbols:**
+**Asset Types**:
+- `crypto` - Cryptocurrency (priced via Coinbase)
+- `stock` - Individual stocks (priced via Twelve Data)
+- `etf` - Exchange-traded funds (priced via Twelve Data)
+- `mutual_fund` - Mutual funds (priced via Twelve Data)
 
-Crypto symbols must match Coinbase's ticker format:
-- Use uppercase (e.g., `BTC`, `ETH`, `SOL`)
-- Must be available on Coinbase Advanced Trade
-- Check available symbols: [Coinbase Advanced Trade](https://www.coinbase.com/advanced-trade)
-- Common symbols: `BTC`, `ETH`, `SOL`, `USDC`, `MATIC`, `AVAX`, `LINK`, `UNI`
+**Forex Pairs**: Inverse rates are automatically generated (USD/PHP → PHP/USD)
 
-**Verifying Symbols Work:**
-
-After adding symbols to `manual-holdings.json`, check the logs:
-
-```bash
-pm2 logs magicmirror --lines 50 | grep -E "(Failed to fetch price|No price data)"
-```
-
-If you see errors for a specific symbol, it may be:
-- Misspelled or incorrectly formatted
-- Not available on Coinbase Advanced Trade
-- Delisted or suspended from trading
-
-**What Happens with Invalid Symbols:**
-
-If a symbol in `manual-holdings.json` is invalid:
-- The holding will display with $0.00 price and value
-- An error will be logged: `Failed to fetch price for SYMBOL`
-- The footer may show: "⚠ Invalid symbol 'SYMBOL' in manual holdings"
-- Other valid holdings will continue to work normally
-
-**Troubleshooting Invalid Symbols:**
-
-```bash
-# Check which symbols are failing
-pm2 logs magicmirror --lines 100 | grep "Failed to fetch price for"
-
-# Verify symbol exists on Coinbase
-# Visit: https://www.coinbase.com/advanced-trade/spot/SYMBOL-USD
-# Example: https://www.coinbase.com/advanced-trade/spot/BTC-USD
-```
-
-### 4. Configure MagicMirror
+### 6. Configure MagicMirror
 
 Add to your `config/config.js`:
 
@@ -119,10 +115,13 @@ Add to your `config/config.js`:
   module: "MMM-Fintech",
   position: "top_right",
   config: {
-    title: "Crypto Holdings",
-    priceUpdateInterval: 5 * 60 * 1000,  // 5 minutes
+    title: "Holdings",
+    cryptoPriceUpdateInterval: 5 * 60 * 1000,   // 5 minutes
+    stockPriceUpdateInterval: 20 * 60 * 1000,   // 20 minutes
     showLastUpdated: true,
-    sortBy: "value"  // or "name"
+    showPricePerUnit: true,
+    showForex: true,
+    sortBy: "value"
   }
 }
 ```
@@ -132,183 +131,92 @@ Add to your `config/config.js`:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `title` | "Holdings" | Header text |
-| `priceUpdateInterval` | 300000 | Price refresh interval in ms (5 min) |
+| `cryptoPriceUpdateInterval` | 300000 | Crypto price refresh (5 min) |
+| `stockPriceUpdateInterval` | 1200000 | Stock/forex price refresh (20 min) |
 | `showLastUpdated` | true | Show last sync timestamp |
-| `sortBy` | "value" | Sort holdings by "value" or "name" |
-| `maxRetries` | 6 | Maximum API retry attempts with exponential backoff |
-| `holdingsSyncTime` | "07:45" | Daily holdings sync time in 24-hour format (HH:MM) |
-| `staleHoldingsThreshold` | 90000000 | Holdings considered stale after this many ms (25 hours) |
-| `stalePricesThreshold` | 3900000 | Prices considered stale after this many ms (65 minutes) |
+| `showPricePerUnit` | true | Show price column |
+| `showForex` | true | Show forex rates section |
+| `sortBy` | "value" | Sort by "value" or "name" |
+| `maxRetries` | 6 | Maximum API retry attempts |
+| `holdingsSyncTime` | "07:45" | Daily holdings sync time (HH:MM) |
+| `staleHoldingsThreshold` | 90000000 | Holdings stale after 25 hours |
+| `stalePricesThreshold` | 3900000 | Prices stale after 65 minutes |
 
 ## Scheduling
 
 - **Holdings sync**: Daily at configured time (default: 7:45am), plus on startup if data >24 hours old
-- **Price updates**: Every 5 minutes (configurable)
+- **Crypto prices**: Every 5 minutes (configurable)
+- **Stock/forex prices**: Every 20 minutes (configurable)
+
+## API Rate Limits
+
+**Twelve Data Free Tier**: 800 calls/day
+- With 20-minute intervals: ~720 calls/day for 10 symbols
+- Crypto uses Coinbase (separate limit)
 
 ## Files
 
 | File | Description | Git |
 |------|-------------|-----|
-| `cdp_api_key.json` | Original API key (delete after setup) | Ignored |
-| `cdp-credentials.enc` | Encrypted credentials | Ignored |
+| `cdp_api_key.json` | Original Coinbase key (delete after setup) | Ignored |
+| `cdp-credentials.enc` | Encrypted Coinbase credentials | Ignored |
+| `twelvedata-credentials.enc` | Encrypted Twelve Data credentials | Ignored |
 | `~/.mmm-fintech-key` | Encryption key | N/A |
-| `manual-holdings.json` | Manual/staked holdings | Ignored |
-| `cache.json` | Cached holdings and prices | Ignored |
+| `manual-holdings.json` | Manual holdings and forex | Ignored |
+| `cache.json` | Cached data | Ignored |
+
+## Finding Valid Symbols
+
+**Crypto** (Coinbase):
+- Use uppercase: `BTC`, `ETH`, `SOL`
+- Check: [Coinbase Advanced Trade](https://www.coinbase.com/advanced-trade)
+
+**Stocks/ETFs** (Twelve Data):
+- Use standard tickers: `AAPL`, `GOOGL`, `VOO`, `SPY`
+- Check: [Twelve Data Symbol Search](https://twelvedata.com/symbols)
+
+**Forex** (Twelve Data):
+- Format: `BASE/QUOTE` (e.g., `USD/PHP`, `EUR/USD`)
 
 ## Troubleshooting
 
-If you see the ⚠ warning indicator, check the logs using the commands below.
+### View Logs
 
-### Error: "Crypto holdings data is N hours old"
-
-**Check sync logs:**
 ```bash
-pm2 logs magicmirror --lines 100 | grep -E "(Holdings sync|syncIfStale|scheduleNextHoldingsSync)"
+pm2 logs magicmirror --lines 100 | grep -i fintech
 ```
 
-**Check for sync errors:**
+### Force Holdings Sync
+
 ```bash
-pm2 logs magicmirror --lines 100 | grep -E "ERROR.*SYNC"
-```
-
-**Verify next sync time:**
-Look for log message: "Next holdings sync scheduled for..."
-
-**Common causes:**
-- Sync scheduler not running (module not initialized properly)
-- Sync failed due to API error (check ERROR logs above)
-- Pi was powered off during scheduled sync time
-- Clock/timezone issue on Pi
-
-**Fix:**
-```bash
+rm ~/MagicMirror/modules/MMM-Fintech/cache.json
 pm2 restart magicmirror
 ```
 
-### Error: "Coinbase sync failed N times, retrying..."
+### Test Provider Connections
 
-**Check sync failure details:**
-```bash
-pm2 logs magicmirror --lines 100 | grep -E "Holdings Fetch.*failed|SYNC.*failed"
-```
-
-**Check API response:**
-```bash
-pm2 logs magicmirror --lines 100 | grep "API request failed"
-```
-
-**Verify credentials exist:**
-```bash
-ls -la ~/.mmm-fintech-key ~/MagicMirror/modules/MMM-Fintech/cdp-credentials.enc
-```
-
-**Common causes:**
-- API key expired or revoked
-- Network connectivity issues
-- Coinbase API outage
-- Rate limit exceeded (unlikely with daily sync)
-- Credentials file corrupted or missing
-
-**Fix:**
-```bash
-# If credentials issue, re-run setup
-cd ~/MagicMirror/modules/MMM-Fintech
-node setup-credentials.js
-```
-
-### Error: "Crypto price updates failing"
-
-**Check price update logs:**
-```bash
-pm2 logs magicmirror --lines 100 | grep -E "Price Update.*failed|PRICE_UPDATE"
-```
-
-**Check which symbols are failing:**
-```bash
-pm2 logs magicmirror --lines 100 | grep "Failed to update price for"
-```
-
-**Common causes:**
-- Specific symbol unavailable on Coinbase (e.g., delisted)
-- Symbol in `manual-holdings.json` is misspelled or invalid
-- API rate limit (unlikely at 5min intervals)
-- Network timeout
-
-**Fix:**
-```bash
-# Verify symbol exists on Coinbase
-# Visit: https://www.coinbase.com/advanced-trade/spot/SYMBOL-USD
-
-# If symbol is invalid, edit manual-holdings.json:
-nano ~/MagicMirror/modules/MMM-Fintech/manual-holdings.json
-# Remove or correct the invalid symbol
-
-# Restart to apply changes:
-pm2 restart magicmirror
-```
-
-### Error: "Invalid symbol 'XYZ' in manual holdings"
-
-**Check manual holdings file:**
-```bash
-cat ~/MagicMirror/modules/MMM-Fintech/manual-holdings.json
-```
-
-**Verify symbol format:**
-- Must be uppercase (e.g., `BTC`, not `btc`)
-- Must match Coinbase ticker exactly
-- Must be available on Coinbase Advanced Trade
-
-**Fix:**
-```bash
-# Edit manual holdings:
-nano ~/MagicMirror/modules/MMM-Fintech/manual-holdings.json
-
-# Correct the symbol or remove the entry
-# Save and restart:
-pm2 restart magicmirror
-```
-
-### Error: "[CREDENTIALS] - Encryption key or credentials file missing"
-
-**Check if files exist:**
-```bash
-ls -la ~/.mmm-fintech-key
-ls -la ~/MagicMirror/modules/MMM-Fintech/cdp-credentials.enc
-```
-
-**Common causes:**
-- Setup script not run: `setup-credentials.js` not executed
-- Encryption key accidentally deleted
-- Running on different user account than setup
-
-**Fix:**
 ```bash
 cd ~/MagicMirror/modules/MMM-Fintech
-node setup-credentials.js
+node test-coinbase.js      # Test Coinbase
+node test-twelvedata.js    # Test Twelve Data
 ```
 
-### General Debugging
+### Common Errors
 
-**View all MMM-Fintech logs:**
-```bash
-pm2 logs magicmirror | grep MMM-Fintech
-```
+**"Crypto holdings data is N hours old"**
+- Check sync logs: `pm2 logs magicmirror --lines 100 | grep -E "Holdings sync"`
+- Restart: `pm2 restart magicmirror`
 
-**View last 100 lines:**
-```bash
-pm2 logs magicmirror --lines 100
-```
+**"Invalid symbol 'XYZ'"**
+- Verify symbol exists on the appropriate exchange
+- Check `type` field matches the asset (crypto vs stock)
 
-**Follow logs in real-time:**
-```bash
-pm2 logs magicmirror --lines 0
-```
+**"TwelveData provider not configured"**
+- Run `node setup-twelvedata.js` to add credentials
 
-**Check module is loaded:**
-```bash
-pm2 logs magicmirror --lines 50 | grep "MMM-Fintech node_helper started"
-```
+**"Rate limit exceeded"**
+- Twelve Data: Wait for credit reset (per minute)
+- Coinbase: Uses exponential backoff automatically
 
 ## Roadmap
 

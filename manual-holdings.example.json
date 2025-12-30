@@ -1,42 +1,47 @@
 {
-  "description": "Example manual-holdings.json structure for Phase 3",
+  "description": "Example manual-holdings.json for MMM-Fintech v0.5.0+",
   "lastUpdated": "2025-12-29T00:00:00Z",
   "holdings": [
     {
       "symbol": "SOL",
-      "quantity": 12.91904735,
+      "quantity": 10.0,
       "type": "crypto",
       "source": "coinbase-staked",
-      "notes": "100% staked"
+      "notes": "Example staked crypto"
+    },
+    {
+      "symbol": "BTC",
+      "quantity": 0.5,
+      "type": "crypto",
+      "source": "manual"
     },
     {
       "symbol": "ETH",
-      "quantity": 0.38046338,
+      "quantity": 2.0,
       "type": "crypto",
-      "source": "coinbase-staked",
-      "notes": "Staked ETH"
+      "source": "manual"
     },
     {
       "symbol": "AAPL",
+      "quantity": 100,
+      "type": "stock",
+      "source": "brokerage"
+    },
+    {
+      "symbol": "NVDA",
       "quantity": 50,
       "type": "stock",
-      "source": "fidelity"
+      "source": "brokerage"
     },
     {
-      "symbol": "SPY",
-      "quantity": 10,
-      "type": "etf",
-      "source": "fidelity"
-    },
-    {
-      "symbol": "FXAIX",
-      "quantity": 100,
-      "type": "mutual_fund",
-      "source": "fidelity-401k"
+      "symbol": "MSFT",
+      "quantity": 75,
+      "type": "stock",
+      "source": "brokerage"
     }
   ],
   "forex": [
-    { "pair": "USD/PHP" },
-    { "pair": "USD/EUR" }
+    { "pair": "USD/EUR" },
+    { "pair": "USD/CNY" }
   ]
 }

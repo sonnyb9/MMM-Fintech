@@ -19,7 +19,7 @@ Core functionality for cryptocurrency tracking via Coinbase CDP API.
 - Error handling with warning indicator
 - Retry logic with exponential backoff
 
-## 🎉 Phase 2 - Hardening (Complete)
+## ✅ Phase 2 - Hardening (Complete)
 
 **Status**: Released in v0.4.0
 
@@ -42,55 +42,39 @@ Improve reliability and user feedback for production use.
   - Enhanced error categorization and tracking
   - Footer only displays when warnings exist
 
-## 📋 Phase 3 - Multi-Asset Support
+## ✅ Phase 3.1 - Multi-Asset Support (Complete)
 
-**Status**: Planning complete, ready for implementation
+**Status**: Released in v0.5.0
 
 Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 
-### 3.1 - Twelve Data Integration
+- ✅ **Provider Architecture Refactor**
+  - Base provider class with shared utilities
+  - Coinbase provider extracted from node_helper
+  - Factory functions for provider creation and routing
+  - Provider-specific retry strategies
 
-Add support for traditional financial assets and forex via Twelve Data API.
+- ✅ **Twelve Data Integration**
+  - Encrypted credential storage (`setup-twelvedata.js`)
+  - Stocks, ETFs, mutual funds via `/quote` endpoint
+  - Forex rates via `/exchange_rate` endpoint
+  - Credit tracking via response headers
 
-**Technical Approach**:
-- Manual entry for holdings (similar to crypto staking)
-- Coinbase API for crypto pricing
-- Twelve Data API for stocks, ETFs, mutual funds, and forex pricing
-- Two separate displays: Holdings table and Forex rates table
+- ✅ **Asset Type Support**
+  - Types: `crypto`, `stock`, `etf`, `mutual_fund`, `forex`
+  - Automatic routing to appropriate provider
+  - Merge key: `symbol:type` to prevent conflicts
 
-**Asset Types**:
-- `crypto` - Cryptocurrency (via Coinbase)
-- `stock` - Individual stocks (via Twelve Data)
-- `etf` - Exchange-traded funds (via Twelve Data)
-- `mutual_fund` - Mutual funds (via Twelve Data)
-- `forex` - Foreign exchange rates (via Twelve Data, display only)
+- ✅ **Separate Update Intervals**
+  - Crypto: 5 minutes (`cryptoPriceUpdateInterval`)
+  - Stocks/ETFs/Forex: 20 minutes (`stockPriceUpdateInterval`)
+  - Stays within Twelve Data free tier (800 calls/day)
 
-**Implementation Tasks**:
-- [ ] Credential management for Twelve Data API key (encrypted storage)
-- [ ] Update `manual-holdings.json` structure with `holdings` and `forex` arrays
-- [ ] Add asset type detection and routing logic
-- [ ] Implement Twelve Data `/quote` endpoint integration
-- [ ] Add configurable update intervals:
-  - Crypto prices: 5 minutes (existing)
-  - Stocks/ETFs/Mutual Funds/Forex: 20 minutes (new, configurable)
-- [ ] Add "Price/Unit" column to holdings table
-- [ ] Create separate forex rates display section
-- [ ] Display inverse forex rates (e.g., USD/PHP and PHP/USD)
-- [ ] Format forex rates to 2 decimal places
-- [ ] API rate limit management (800 calls/day free tier)
-
-**API Budget** (Free tier: 800 calls/day):
-- Holdings sync (7:45am): ~10 calls
-- Price updates (every 20 min): ~10 symbols × 72 updates/day = 720 calls
-- **Total**: ~730 calls/day ✅
-
-**Configuration Changes**:
-```javascript
-{
-  priceUpdateInterval: 5 * 60 * 1000,      // Crypto: 5 min
-  stockUpdateInterval: 20 * 60 * 1000,     // Stocks/Forex: 20 min
-}
-```
+- ✅ **Frontend Enhancements**
+  - Price per unit column (`showPricePerUnit` config)
+  - Forex display section (`showForex` config)
+  - Automatic inverse forex pair generation
+  - Smart rate formatting based on magnitude
 
 **Manual Holdings Structure**:
 ```json
@@ -100,23 +84,28 @@ Add support for traditional financial assets and forex via Twelve Data API.
     {"symbol": "AAPL", "quantity": 50, "type": "stock", "source": "fidelity"}
   ],
   "forex": [
-    {"pair": "USD/PHP", "type": "forex"},
-    {"pair": "USD/EUR", "type": "forex"}
+    {"pair": "USD/PHP"},
+    {"pair": "USD/EUR"}
   ]
 }
 ```
 
-### 3.2 - Brokerage Integration (Fidelity via Plaid)
+## 📋 Phase 3.2 - Brokerage Integration
 
-Automatic ingestion of brokerage account holdings.
+**Status**: Planning
+
+Automatic ingestion of brokerage account holdings via Plaid.
 
 - [ ] Plaid Link integration
 - [ ] Fidelity account connection
 - [ ] Automatic holdings sync from brokerage
 - [ ] Support for multiple account types (brokerage, IRA, 401k)
 - [ ] Position quantity tracking
+- [ ] Secure token storage
 
-### 3.3 - Enhanced Financial Metrics
+## 📋 Phase 3.3 - Enhanced Financial Metrics
+
+**Status**: Planning
 
 - [ ] Percent change since last market close for equities
 - [ ] Intraday vs. overnight change tracking
@@ -159,6 +148,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
+- **v0.5.0** (2025-12-29) - Phase 3.1 complete: Multi-asset support, Twelve Data integration, provider architecture
 - **v0.4.0** (2025-12-29) - Phase 2 complete: Stale data detection, health notifications, enhanced error handling
 - **v0.3.0** (2025-12-27) - Phase 2: Retry logic with exponential backoff
 - **v0.2.0** (2025-12-26) - Phase 1: Coinbase PoC complete
