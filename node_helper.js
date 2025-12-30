@@ -1,32 +1,26 @@
 const NodeHelper = require("node_helper");
-const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
-const https = require("https");
-const jwt = require("jsonwebtoken");
+const providers = require("./providers");
 
 module.exports = NodeHelper.create({
-  start: function () {
+  start: function() {
     this.log("MMM-Fintech node_helper started");
     this.dataPath = path.join(this.path, "cache.json");
-    this.encryptedCredentialsPath = path.join(this.path, "cdp-credentials.enc");
-    this.keyPath = path.join(process.env.HOME || process.env.USERPROFILE, ".mmm-fintech-key");
     this.manualHoldingsPath = path.join(this.path, "manual-holdings.json");
-    this.credentials = null;
     this.priceInterval = null;
     this.holdingsTimeout = null;
     this.lastError = null;
-    this.maxRetries = null;
-    this.initialRetryDelay = 2000;
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
+    this.providers = {};
   },
 
-  log: function (msg) {
+  log: function(msg) {
     console.log("[MMM-Fintech] " + msg);
   },
 
-  logError: function (category, message, details) {
+  logError: function(category, message, details) {
     this.lastError = {
       category: category,
       message: message,
@@ -36,43 +30,14 @@ module.exports = NodeHelper.create({
     this.log("ERROR [" + category + "] " + message + (details ? " - " + details : ""));
   },
 
-  clearError: function () {
+  clearError: function() {
     this.lastError = null;
   },
 
-  sleep: function (ms) {
-    return new Promise(function (resolve) {
-      setTimeout(resolve, ms);
-    });
-  },
-
-  retryWithBackoff: async function (fn, context, args, operation) {
-    var attempt = 0;
-    var self = this;
-
-    while (attempt <= this.maxRetries) {
-      try {
-        return await fn.apply(context, args);
-      } catch (error) {
-        attempt++;
-        
-        if (attempt > this.maxRetries) {
-          self.logError(operation, "Max retries exceeded", error.message);
-          throw error;
-        }
-
-        var delay = self.initialRetryDelay * Math.pow(2, attempt - 1);
-        self.log(operation + " failed (attempt " + attempt + "/" + self.maxRetries + "), retrying in " + (delay / 1000) + "s...");
-        await self.sleep(delay);
-      }
-    }
-  },
-
-  socketNotificationReceived: function (notification, payload) {
+  socketNotificationReceived: function(notification, payload) {
     if (notification === "MMM-FINTECH_INIT") {
       this.config = payload.config;
-      this.maxRetries = this.config.maxRetries || 6;
-      this.initClient();
+      this.initProviders();
       this.loadCachedData();
     }
 
@@ -83,7 +48,31 @@ module.exports = NodeHelper.create({
     }
   },
 
-  schedulePriceUpdates: function () {
+  initProviders: function() {
+    var coinbase = providers.createProvider("coinbase");
+    var initialized = coinbase.init(this.config, this.path);
+
+    if (initialized) {
+      this.providers.coinbase = coinbase;
+      this.log("Coinbase provider initialized");
+    } else {
+      this.logError("INIT", "Failed to initialize Coinbase provider");
+      this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
+    }
+  },
+
+  getProviderForSymbol: function(holding) {
+    var assetType = holding.type || "crypto";
+    var providerName = providers.getProviderForAssetType(assetType);
+
+    if (providerName && this.providers[providerName]) {
+      return this.providers[providerName];
+    }
+
+    return this.providers.coinbase;
+  },
+
+  schedulePriceUpdates: function() {
     var self = this;
     var interval = this.config.priceUpdateInterval || 5 * 60 * 1000;
 
@@ -93,14 +82,12 @@ module.exports = NodeHelper.create({
 
     this.log("Price updates scheduled every " + (interval / 60000) + " minutes");
 
-    this.priceInterval = setInterval(function () {
+    this.priceInterval = setInterval(function() {
       self.updatePricesOnly();
     }, interval);
   },
 
-  syncIfStale: function () {
-    var self = this;
-
+  syncIfStale: function() {
     if (!fs.existsSync(this.dataPath)) {
       this.log("No cache file found, triggering holdings sync");
       this.syncHoldings();
@@ -133,7 +120,7 @@ module.exports = NodeHelper.create({
     }
   },
 
-  scheduleNextHoldingsSync: function () {
+  scheduleNextHoldingsSync: function() {
     var self = this;
     var now = new Date();
     var syncTime = this.config.holdingsSyncTime || "07:45";
@@ -156,201 +143,20 @@ module.exports = NodeHelper.create({
 
     this.log("Next holdings sync scheduled for " + nextSync.toLocaleString());
 
-    this.holdingsTimeout = setTimeout(function () {
+    this.holdingsTimeout = setTimeout(function() {
       self.syncHoldings();
       self.scheduleNextHoldingsSync();
     }, msUntilSync);
   },
 
-  decrypt: function (encryptedBuffer, key) {
-    var iv = encryptedBuffer.slice(0, 12);
-    var authTag = encryptedBuffer.slice(12, 28);
-    var encrypted = encryptedBuffer.slice(28);
-    var decipher = crypto.createDecipheriv("aes-256-gcm", key, iv);
-    decipher.setAuthTag(authTag);
-    return decipher.update(encrypted, null, "utf8") + decipher.final("utf8");
-  },
-
-  loadCredentials: function () {
-    if (!fs.existsSync(this.keyPath)) {
-      this.log("Encryption key not found at " + this.keyPath);
-      return null;
-    }
-
-    if (!fs.existsSync(this.encryptedCredentialsPath)) {
-      this.log("Encrypted credentials not found. Run setup-credentials.js first.");
-      return null;
-    }
-
-    try {
-      var encKey = fs.readFileSync(this.keyPath, "utf8").trim();
-      var keyBuffer = Buffer.from(encKey, "hex");
-      var encryptedData = fs.readFileSync(this.encryptedCredentialsPath);
-      var decrypted = this.decrypt(encryptedData, keyBuffer);
-      return JSON.parse(decrypted);
-    } catch (error) {
-      this.logError("CREDENTIALS", "Failed to load credentials", error.message);
-      return null;
-    }
-  },
-
-  initClient: function () {
-    this.credentials = this.loadCredentials();
-    if (!this.credentials) {
-      this.logError("INIT", "Cannot initialize without credentials");
-      this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
-      return;
-    }
-
-    this.log("Credentials loaded successfully");
-  },
-
-  buildJWT: function (method, path) {
-    var uri = method + " api.coinbase.com" + path;
-    
-    var payload = {
-      sub: this.credentials.name,
-      iss: "cdp",
-      nbf: Math.floor(Date.now() / 1000),
-      exp: Math.floor(Date.now() / 1000) + 120,
-      uri: uri
-    };
-
-    var header = {
-      alg: "ES256",
-      kid: this.credentials.name,
-      nonce: crypto.randomBytes(16).toString("hex")
-    };
-
-    return jwt.sign(payload, this.credentials.privateKey, {
-      algorithm: "ES256",
-      header: header
-    });
-  },
-
-  makeAPIRequest: function (method, path, params) {
-    var self = this;
-    
-    return new Promise(function (resolve, reject) {
-      var queryString = "";
-      if (params && Object.keys(params).length > 0) {
-        queryString = "?" + Object.keys(params)
-          .map(function (key) { return key + "=" + encodeURIComponent(params[key]); })
-          .join("&");
-      }
-
-      var pathWithQuery = path + queryString;
-      var jwtToken = self.buildJWT(method, path);
-
-      var options = {
-        hostname: "api.coinbase.com",
-        port: 443,
-        path: pathWithQuery,
-        method: method,
-        headers: {
-          "Authorization": "Bearer " + jwtToken,
-          "Content-Type": "application/json"
-        }
-      };
-
-      var req = https.request(options, function (res) {
-        var data = "";
-
-        res.on("data", function (chunk) {
-          data += chunk;
-        });
-
-        res.on("end", function () {
-          if (res.statusCode >= 200 && res.statusCode < 300) {
-            try {
-              resolve(JSON.parse(data));
-            } catch (error) {
-              reject(new Error("Failed to parse response: " + error.message));
-            }
-          } else {
-            reject(new Error("API request failed with status " + res.statusCode + ": " + data));
-          }
-        });
-      });
-
-      req.on("error", function (error) {
-        reject(error);
-      });
-
-      req.end();
-    });
-  },
-
-  fetchHoldingsFromAPI: async function () {
-    if (!this.credentials) {
-      throw new Error("Credentials not loaded");
-    }
-
-    var response = await this.makeAPIRequest("GET", "/api/v3/brokerage/accounts", { limit: 250 });
-    var holdings = [];
-
-    if (response && response.accounts) {
-      for (var i = 0; i < response.accounts.length; i++) {
-        var account = response.accounts[i];
-        var balance = parseFloat(account.available_balance.value);
-        if (balance > 0 && account.currency) {
-          holdings.push({
-            symbol: account.currency,
-            quantity: balance,
-            sources: ["coinbase-api"]
-          });
-        }
-      }
-    }
-
-    return holdings;
-  },
-
-  fetchPriceFromAPI: async function (symbol) {
-    if (!this.credentials) {
-      throw new Error("Credentials not loaded");
-    }
-
-    var productId = symbol + "-USD";
-    
-    try {
-      var response = await this.makeAPIRequest("GET", "/api/v3/brokerage/market/products/" + productId, {});
-
-      if (response && response.price) {
-        return {
-          price: parseFloat(response.price),
-          change24h: parseFloat(response.price_percentage_change_24h || 0)
-        };
-      }
-
-      throw new Error("No price data returned for " + symbol);
-    } catch (error) {
-      var errorMessage = error.message || "";
-      
-      if (errorMessage.includes("404") || errorMessage.includes("not found") || errorMessage.includes("INVALID_SYMBOL")) {
-        var symbolError = new Error("Invalid or unavailable symbol: " + symbol);
-        symbolError.code = "INVALID_SYMBOL";
-        throw symbolError;
-      }
-      
-      if (errorMessage.includes("429") || errorMessage.includes("rate limit")) {
-        var rateLimitError = new Error("Rate limit exceeded for " + symbol);
-        rateLimitError.code = "RATE_LIMIT";
-        throw rateLimitError;
-      }
-      
-      throw error;
-    }
-  },
-
-  mergeHoldings: function (holdings) {
+  mergeHoldings: function(holdings) {
     var merged = {};
 
     for (var i = 0; i < holdings.length; i++) {
       var holding = holdings[i];
       var symbol = holding.symbol;
-
       var sources = holding.sources || (holding.source ? [holding.source] : []);
+      var type = holding.type || "crypto";
 
       if (merged[symbol]) {
         merged[symbol].quantity += holding.quantity;
@@ -359,6 +165,7 @@ module.exports = NodeHelper.create({
         merged[symbol] = {
           symbol: symbol,
           quantity: holding.quantity,
+          type: type,
           sources: sources.slice()
         };
       }
@@ -374,19 +181,22 @@ module.exports = NodeHelper.create({
     return result;
   },
 
-  syncHoldings: async function () {
+  syncHoldings: async function() {
     var self = this;
     this.log("Starting holdings sync...");
 
     try {
-      var apiHoldings = await this.retryWithBackoff(
-        this.fetchHoldingsFromAPI,
-        this,
-        [],
-        "Holdings Fetch"
-      );
+      var apiHoldings = [];
 
-      this.log("Fetched " + apiHoldings.length + " holdings from API");
+      if (this.providers.coinbase) {
+        try {
+          var coinbaseHoldings = await this.providers.coinbase.fetchHoldings();
+          apiHoldings = apiHoldings.concat(coinbaseHoldings);
+          this.log("Fetched " + coinbaseHoldings.length + " holdings from Coinbase");
+        } catch (error) {
+          this.logError("COINBASE", "Failed to fetch holdings", error.message);
+        }
+      }
 
       var manualHoldings = [];
       if (fs.existsSync(this.manualHoldingsPath)) {
@@ -406,14 +216,18 @@ module.exports = NodeHelper.create({
 
       for (var i = 0; i < allHoldings.length; i++) {
         var holding = allHoldings[i];
-        try {
-          var priceData = await this.retryWithBackoff(
-            this.fetchPriceFromAPI,
-            this,
-            [holding.symbol],
-            "Price Fetch (" + holding.symbol + ")"
-          );
+        var provider = this.getProviderForSymbol(holding);
 
+        if (!provider) {
+          this.logError("PROVIDER", "No provider available for " + holding.symbol);
+          holding.price = 0;
+          holding.change24h = 0;
+          holding.value = 0;
+          continue;
+        }
+
+        try {
+          var priceData = await provider.fetchPrice(holding.symbol);
           holding.price = priceData.price;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
@@ -464,7 +278,7 @@ module.exports = NodeHelper.create({
     }
   },
 
-  updatePricesOnly: async function () {
+  updatePricesOnly: async function() {
     var self = this;
     this.log("Updating prices...");
 
@@ -479,14 +293,14 @@ module.exports = NodeHelper.create({
 
       for (var i = 0; i < cache.holdings.length; i++) {
         var holding = cache.holdings[i];
-        try {
-          var priceData = await this.retryWithBackoff(
-            this.fetchPriceFromAPI,
-            this,
-            [holding.symbol],
-            "Price Update (" + holding.symbol + ")"
-          );
+        var provider = this.getProviderForSymbol(holding);
 
+        if (!provider) {
+          continue;
+        }
+
+        try {
+          var priceData = await provider.fetchPrice(holding.symbol);
           holding.price = priceData.price;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
@@ -530,7 +344,7 @@ module.exports = NodeHelper.create({
     }
   },
 
-  loadCachedData: function () {
+  loadCachedData: function() {
     if (fs.existsSync(this.dataPath)) {
       try {
         var data = fs.readFileSync(this.dataPath, "utf8");
