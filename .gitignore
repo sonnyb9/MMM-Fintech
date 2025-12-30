@@ -1,10 +1,12 @@
 node_modules/
 oauth-tokens.enc
 cdp-credentials.enc
+twelvedata-credentials.enc
 cdp_api_key.json
 .env
 *.log
 .cache/
 test-coinbase.js
+test-twelvedata.js
 manual-holdings.json
 AI-CONTEXT.md

@@ -1,14 +1,18 @@
 const BaseProvider = require("./base");
 const CoinbaseProvider = require("./coinbase");
+const TwelveDataProvider = require("./twelvedata");
 
 module.exports = {
   BaseProvider: BaseProvider,
   CoinbaseProvider: CoinbaseProvider,
+  TwelveDataProvider: TwelveDataProvider,
 
   createProvider: function(type) {
     switch (type) {
       case "coinbase":
         return new CoinbaseProvider();
+      case "twelvedata":
+        return new TwelveDataProvider();
       default:
         throw new Error("Unknown provider type: " + type);
     }

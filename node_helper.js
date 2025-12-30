@@ -50,13 +50,23 @@ module.exports = NodeHelper.create({
 
   initProviders: function() {
     var coinbase = providers.createProvider("coinbase");
-    var initialized = coinbase.init(this.config, this.path);
-
-    if (initialized) {
+    if (coinbase.init(this.config, this.path)) {
       this.providers.coinbase = coinbase;
       this.log("Coinbase provider initialized");
     } else {
       this.logError("INIT", "Failed to initialize Coinbase provider");
+    }
+
+    var twelvedata = providers.createProvider("twelvedata");
+    if (twelvedata.init(this.config, this.path)) {
+      this.providers.twelvedata = twelvedata;
+      this.log("TwelveData provider initialized");
+    } else {
+      this.log("TwelveData provider not configured (optional)");
+    }
+
+    if (!this.providers.coinbase && !this.providers.twelvedata) {
+      this.logError("INIT", "No providers initialized");
       this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
     }
   },
