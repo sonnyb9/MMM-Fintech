@@ -3,6 +3,8 @@ Module.register("MMM-Fintech", {
     cryptoPriceUpdateInterval: 5 * 60 * 1000,
     stockPriceUpdateInterval: 20 * 60 * 1000,
     showLastUpdated: true,
+    showPricePerUnit: true,
+    showForex: true,
     sortBy: "value",
     title: "Holdings",
     holdingsSyncTime: "07:45",
@@ -53,56 +55,16 @@ Module.register("MMM-Fintech", {
       return wrapper;
     }
 
-    var table = document.createElement("table");
-    table.className = "xsmall mmm-fintech-table";
-
-    var headerRow = document.createElement("tr");
-    headerRow.innerHTML = "<th></th><th class='mmm-fintech-qty-header'>Qty</th><th class='mmm-fintech-value-header'>Value</th><th class='mmm-fintech-change-header'>24h</th>";
-    table.appendChild(headerRow);
-
-    var sortedHoldings = this.sortHoldings(this.holdings);
-
-    for (var i = 0; i < sortedHoldings.length; i++) {
-      var h = sortedHoldings[i];
-      var row = document.createElement("tr");
-
-      var symbolCell = document.createElement("td");
-      symbolCell.className = "mmm-fintech-symbol";
-      symbolCell.innerHTML = h.symbol;
-
-      var qtyCell = document.createElement("td");
-      qtyCell.className = "mmm-fintech-qty";
-      qtyCell.innerHTML = this.formatQuantity(h.quantity);
-
-      var valueCell = document.createElement("td");
-      valueCell.className = "mmm-fintech-value";
-      valueCell.innerHTML = this.formatCurrency(h.value);
-
-      var changeCell = document.createElement("td");
-      changeCell.className = "mmm-fintech-change";
-      if (h.change24h > 0) {
-        changeCell.classList.add("positive");
-        changeCell.innerHTML = "+" + h.change24h.toFixed(2) + "%";
-      } else if (h.change24h < 0) {
-        changeCell.classList.add("negative");
-        changeCell.innerHTML = h.change24h.toFixed(2) + "%";
-      } else {
-        changeCell.innerHTML = "0.00%";
-      }
-
-      row.appendChild(symbolCell);
-      row.appendChild(qtyCell);
-      row.appendChild(valueCell);
-      row.appendChild(changeCell);
-      table.appendChild(row);
-    }
-
-    wrapper.appendChild(table);
+    wrapper.appendChild(this.buildHoldingsTable());
 
     var totalDiv = document.createElement("div");
     totalDiv.className = "mmm-fintech-total";
     totalDiv.innerHTML = "Total: " + this.formatCurrency(this.totalValue);
     wrapper.appendChild(totalDiv);
+
+    if (this.config.showForex && this.forex && this.forex.length > 0) {
+      wrapper.appendChild(this.buildForexSection());
+    }
 
     var warningData = this.getWarnings();
     var isStale = this.isDataStale();
@@ -125,6 +87,104 @@ Module.register("MMM-Fintech", {
     }
 
     return wrapper;
+  },
+
+  buildHoldingsTable: function () {
+    var table = document.createElement("table");
+    table.className = "xsmall mmm-fintech-table";
+
+    var headerRow = document.createElement("tr");
+    var headerHtml = "<th></th><th class='mmm-fintech-qty-header'>Qty</th>";
+    if (this.config.showPricePerUnit) {
+      headerHtml += "<th class='mmm-fintech-price-header'>Price</th>";
+    }
+    headerHtml += "<th class='mmm-fintech-value-header'>Value</th><th class='mmm-fintech-change-header'>24h</th>";
+    headerRow.innerHTML = headerHtml;
+    table.appendChild(headerRow);
+
+    var sortedHoldings = this.sortHoldings(this.holdings);
+
+    for (var i = 0; i < sortedHoldings.length; i++) {
+      var h = sortedHoldings[i];
+      var row = document.createElement("tr");
+
+      var symbolCell = document.createElement("td");
+      symbolCell.className = "mmm-fintech-symbol";
+      symbolCell.innerHTML = h.symbol;
+      row.appendChild(symbolCell);
+
+      var qtyCell = document.createElement("td");
+      qtyCell.className = "mmm-fintech-qty";
+      qtyCell.innerHTML = this.formatQuantity(h.quantity);
+      row.appendChild(qtyCell);
+
+      if (this.config.showPricePerUnit) {
+        var priceCell = document.createElement("td");
+        priceCell.className = "mmm-fintech-price";
+        priceCell.innerHTML = this.formatCurrency(h.price || 0);
+        row.appendChild(priceCell);
+      }
+
+      var valueCell = document.createElement("td");
+      valueCell.className = "mmm-fintech-value";
+      valueCell.innerHTML = this.formatCurrency(h.value);
+      row.appendChild(valueCell);
+
+      var changeCell = document.createElement("td");
+      changeCell.className = "mmm-fintech-change";
+      if (h.change24h > 0) {
+        changeCell.classList.add("positive");
+        changeCell.innerHTML = "+" + h.change24h.toFixed(2) + "%";
+      } else if (h.change24h < 0) {
+        changeCell.classList.add("negative");
+        changeCell.innerHTML = h.change24h.toFixed(2) + "%";
+      } else {
+        changeCell.innerHTML = "0.00%";
+      }
+      row.appendChild(changeCell);
+
+      table.appendChild(row);
+    }
+
+    return table;
+  },
+
+  buildForexSection: function () {
+    var section = document.createElement("div");
+    section.className = "mmm-fintech-forex-section";
+
+    var header = document.createElement("div");
+    header.className = "mmm-fintech-forex-header";
+    header.innerHTML = "Exchange Rates";
+    section.appendChild(header);
+
+    var table = document.createElement("table");
+    table.className = "xsmall mmm-fintech-forex-table";
+
+    for (var i = 0; i < this.forex.length; i++) {
+      var fx = this.forex[i];
+
+      if (fx.error) {
+        continue;
+      }
+
+      var row = document.createElement("tr");
+
+      var pairCell = document.createElement("td");
+      pairCell.className = "mmm-fintech-forex-pair";
+      pairCell.innerHTML = fx.pair;
+      row.appendChild(pairCell);
+
+      var rateCell = document.createElement("td");
+      rateCell.className = "mmm-fintech-forex-rate";
+      rateCell.innerHTML = this.formatForexRate(fx.rate);
+      row.appendChild(rateCell);
+
+      table.appendChild(row);
+    }
+
+    section.appendChild(table);
+    return section;
   },
 
   isDataStale: function () {
@@ -218,6 +278,15 @@ Module.register("MMM-Fintech", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+  },
+
+  formatForexRate: function (rate) {
+    if (rate >= 100) {
+      return rate.toFixed(2);
+    } else if (rate >= 1) {
+      return rate.toFixed(4);
+    }
+    return rate.toFixed(6);
   },
 
   formatTime: function (isoString) {

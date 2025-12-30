@@ -34,6 +34,13 @@
   padding-left: 15px;
 }
 
+.mmm-fintech-price {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+  opacity: 0.8;
+}
+
 .mmm-fintech-value {
   text-align: right;
   font-family: monospace;
@@ -59,6 +66,33 @@
   padding-top: 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
   text-align: right;
+}
+
+.mmm-fintech-forex-section {
+  margin-top: 15px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mmm-fintech-forex-header {
+  font-size: 0.9em;
+  opacity: 0.8;
+  margin-bottom: 8px;
+}
+
+.mmm-fintech-forex-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.mmm-fintech-forex-pair {
+  text-align: left;
+  padding-right: 15px;
+}
+
+.mmm-fintech-forex-rate {
+  text-align: right;
+  font-family: monospace;
 }
 
 .mmm-fintech-timestamp {
