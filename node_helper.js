@@ -253,6 +253,7 @@ module.exports = NodeHelper.create({
         rates.push({
           pair: pair,
           rate: rateData.rate,
+          change24h: rateData.change24h || 0,
           timestamp: rateData.timestamp
         });
 
@@ -260,9 +261,11 @@ module.exports = NodeHelper.create({
         if (parts.length === 2) {
           var inversePair = parts[1] + "/" + parts[0];
           var inverseRate = 1 / rateData.rate;
+          var inverseChange = rateData.change24h ? -rateData.change24h : 0;
           rates.push({
             pair: inversePair,
             rate: inverseRate,
+            change24h: inverseChange,
             timestamp: rateData.timestamp,
             isInverse: true
           });
@@ -272,6 +275,7 @@ module.exports = NodeHelper.create({
         rates.push({
           pair: pair,
           rate: 0,
+          change24h: 0,
           error: true
         });
       }

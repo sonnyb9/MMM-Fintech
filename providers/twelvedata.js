@@ -218,20 +218,31 @@ class TwelveDataProvider extends BaseProvider {
     try {
       var response = await this.retryWithBackoff(
         function() {
-          return self.makeAPIRequest("exchange_rate", { symbol: pair });
+          return self.makeAPIRequest("quote", { symbol: pair });
         },
         "Forex Fetch (" + pair + ")"
       );
 
-      if (!response || !response.rate) {
+      if (!response || !response.close) {
         var noDataError = new Error("No data returned for " + pair);
         noDataError.code = "INVALID_SYMBOL";
         throw noDataError;
       }
 
+      var rate = parseFloat(response.close);
+      var previousClose = parseFloat(response.previous_close || response.close);
+      var change24h = 0;
+
+      if (previousClose && previousClose !== 0) {
+        change24h = ((rate - previousClose) / previousClose) * 100;
+      } else if (response.percent_change) {
+        change24h = parseFloat(response.percent_change);
+      }
+
       return {
-        rate: parseFloat(response.rate),
-        timestamp: response.timestamp
+        rate: rate,
+        change24h: change24h,
+        timestamp: response.timestamp || Date.now()
       };
     } catch (error) {
       var classified = this.classifyError(error);

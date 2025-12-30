@@ -93,6 +93,21 @@
 .mmm-fintech-forex-rate {
   text-align: right;
   font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-forex-change {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-forex-change.positive {
+  color: #5f5;
+}
+
+.mmm-fintech-forex-change.negative {
+  color: #f55;
 }
 
 .mmm-fintech-timestamp {

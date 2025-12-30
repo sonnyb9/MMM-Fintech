@@ -6,7 +6,7 @@ Module.register("MMM-Fintech", {
     showPricePerUnit: true,
     showForex: true,
     sortBy: "value",
-    title: "Holdings",
+    title: "Portfolio",
     holdingsSyncTime: "07:45",
     staleHoldingsThreshold: 25 * 60 * 60 * 1000,
     stalePricesThreshold: 65 * 60 * 1000,
@@ -179,6 +179,20 @@ Module.register("MMM-Fintech", {
       rateCell.className = "mmm-fintech-forex-rate";
       rateCell.innerHTML = this.formatForexRate(fx.rate);
       row.appendChild(rateCell);
+
+      var changeCell = document.createElement("td");
+      changeCell.className = "mmm-fintech-forex-change";
+      var change = fx.change24h || 0;
+      if (change > 0) {
+        changeCell.classList.add("positive");
+        changeCell.innerHTML = "+" + change.toFixed(2) + "%";
+      } else if (change < 0) {
+        changeCell.classList.add("negative");
+        changeCell.innerHTML = change.toFixed(2) + "%";
+      } else {
+        changeCell.innerHTML = "0.00%";
+      }
+      row.appendChild(changeCell);
 
       table.appendChild(row);
     }
