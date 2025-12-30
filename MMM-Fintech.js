@@ -1,17 +1,20 @@
 Module.register("MMM-Fintech", {
   defaults: {
-    priceUpdateInterval: 5 * 60 * 1000,
+    cryptoPriceUpdateInterval: 5 * 60 * 1000,
+    stockPriceUpdateInterval: 20 * 60 * 1000,
     showLastUpdated: true,
     sortBy: "value",
     title: "Holdings",
     holdingsSyncTime: "07:45",
     staleHoldingsThreshold: 25 * 60 * 60 * 1000,
-    stalePricesThreshold: 65 * 60 * 1000
+    stalePricesThreshold: 65 * 60 * 1000,
+    maxRetries: 6
   },
 
   start: function () {
     Log.info("Starting module: " + this.name);
     this.holdings = [];
+    this.forex = [];
     this.totalValue = 0;
     this.lastUpdated = null;
     this.lastPriceUpdate = null;
@@ -163,15 +166,15 @@ Module.register("MMM-Fintech", {
       var pricesAge = (now - new Date(this.lastPriceUpdate)) / (60 * 1000);
 
       if (holdingsAge > 48) {
-        warnings.push("⚠ Crypto holdings data is " + holdingsAge.toFixed(1) + " hours old");
+        warnings.push("⚠ Holdings data is " + holdingsAge.toFixed(1) + " hours old");
         severity = "critical";
       } else if (holdingsAge > 25) {
-        warnings.push("⚠ Crypto holdings data is " + holdingsAge.toFixed(1) + " hours old");
+        warnings.push("⚠ Holdings data is " + holdingsAge.toFixed(1) + " hours old");
         severity = "warning";
       }
 
       if (pricesAge > 120) {
-        warnings.push("⚠ Crypto price updates failing");
+        warnings.push("⚠ Price updates failing");
         if (severity !== "critical") {
           severity = "error";
         }
@@ -225,6 +228,7 @@ Module.register("MMM-Fintech", {
   socketNotificationReceived: function (notification, payload) {
     if (notification === "MMM-FINTECH_DATA") {
       this.holdings = payload.holdings || [];
+      this.forex = payload.forex || [];
       this.totalValue = payload.totalValue || 0;
       this.lastUpdated = payload.lastUpdated || null;
       this.lastPriceUpdate = payload.lastPriceUpdate || null;

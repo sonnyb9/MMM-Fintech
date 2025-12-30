@@ -8,7 +8,8 @@ module.exports = NodeHelper.create({
     this.log("MMM-Fintech node_helper started");
     this.dataPath = path.join(this.path, "cache.json");
     this.manualHoldingsPath = path.join(this.path, "manual-holdings.json");
-    this.priceInterval = null;
+    this.cryptoPriceInterval = null;
+    this.stockPriceInterval = null;
     this.holdingsTimeout = null;
     this.lastError = null;
     this.invalidSymbols = [];
@@ -88,17 +89,26 @@ module.exports = NodeHelper.create({
 
   schedulePriceUpdates: function() {
     var self = this;
-    var interval = this.config.priceUpdateInterval || 5 * 60 * 1000;
+    var cryptoInterval = this.config.cryptoPriceUpdateInterval || 5 * 60 * 1000;
+    var stockInterval = this.config.stockPriceUpdateInterval || 20 * 60 * 1000;
 
-    if (this.priceInterval) {
-      clearInterval(this.priceInterval);
+    if (this.cryptoPriceInterval) {
+      clearInterval(this.cryptoPriceInterval);
+    }
+    if (this.stockPriceInterval) {
+      clearInterval(this.stockPriceInterval);
     }
 
-    this.log("Price updates scheduled every " + (interval / 60000) + " minutes");
+    this.log("Crypto price updates scheduled every " + (cryptoInterval / 60000) + " minutes");
+    this.log("Stock/ETF/Forex price updates scheduled every " + (stockInterval / 60000) + " minutes");
 
-    this.priceInterval = setInterval(function() {
-      self.updatePricesOnly();
-    }, interval);
+    this.cryptoPriceInterval = setInterval(function() {
+      self.updatePricesByType("crypto");
+    }, cryptoInterval);
+
+    this.stockPriceInterval = setInterval(function() {
+      self.updatePricesByType("stock");
+    }, stockInterval);
   },
 
   syncIfStale: function() {
@@ -345,6 +355,8 @@ module.exports = NodeHelper.create({
         totalValue: totalValue,
         lastUpdated: new Date().toISOString(),
         lastPriceUpdate: new Date().toISOString(),
+        lastCryptoPriceUpdate: new Date().toISOString(),
+        lastStockPriceUpdate: new Date().toISOString(),
         hasError: this.lastError !== null,
         invalidSymbols: this.invalidSymbols,
         rateLimitedSymbols: this.rateLimitedSymbols
@@ -362,9 +374,11 @@ module.exports = NodeHelper.create({
     }
   },
 
-  updatePricesOnly: async function() {
+  updatePricesByType: async function(updateType) {
     var self = this;
-    this.log("Updating prices...");
+    var isCrypto = updateType === "crypto";
+    var typeLabel = isCrypto ? "crypto" : "stock/ETF/forex";
+    this.log("Updating " + typeLabel + " prices...");
 
     if (!fs.existsSync(this.dataPath)) {
       this.log("No cache file found, skipping price update");
@@ -374,9 +388,17 @@ module.exports = NodeHelper.create({
     try {
       var cacheData = fs.readFileSync(this.dataPath, "utf8");
       var cache = JSON.parse(cacheData);
+      var updatedCount = 0;
 
       for (var i = 0; i < cache.holdings.length; i++) {
         var holding = cache.holdings[i];
+        var holdingType = holding.type || "crypto";
+        var isHoldingCrypto = holdingType === "crypto";
+
+        if (isCrypto !== isHoldingCrypto) {
+          continue;
+        }
+
         var provider = this.getProviderForSymbol(holding);
 
         if (!provider) {
@@ -388,6 +410,7 @@ module.exports = NodeHelper.create({
           holding.price = priceData.price;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
+          updatedCount++;
         } catch (error) {
           if (error.code === "INVALID_SYMBOL") {
             if (this.invalidSymbols.indexOf(holding.symbol) === -1) {
@@ -405,9 +428,11 @@ module.exports = NodeHelper.create({
         }
       }
 
-      var manualData = this.loadManualData();
-      if (manualData.forex.length > 0) {
-        cache.forex = await this.fetchForexRates(manualData.forex);
+      if (!isCrypto) {
+        var manualData = this.loadManualData();
+        if (manualData.forex.length > 0) {
+          cache.forex = await this.fetchForexRates(manualData.forex);
+        }
       }
 
       var totalValue = 0;
@@ -417,12 +442,19 @@ module.exports = NodeHelper.create({
 
       cache.totalValue = totalValue;
       cache.lastPriceUpdate = new Date().toISOString();
+
+      if (isCrypto) {
+        cache.lastCryptoPriceUpdate = new Date().toISOString();
+      } else {
+        cache.lastStockPriceUpdate = new Date().toISOString();
+      }
+
       cache.hasError = this.lastError !== null;
       cache.invalidSymbols = this.invalidSymbols;
       cache.rateLimitedSymbols = this.rateLimitedSymbols;
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
-      this.log("Prices updated");
+      this.log("Updated " + updatedCount + " " + typeLabel + " prices");
 
       this.clearError();
       this.sendSocketNotification("MMM-FINTECH_DATA", cache);
