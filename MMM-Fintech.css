@@ -2,6 +2,26 @@
   padding: 10px;
 }
 
+.mmm-fintech.xsmall {
+  font-size: 0.75rem;
+}
+
+.mmm-fintech.small {
+  font-size: 0.875rem;
+}
+
+.mmm-fintech.medium {
+  font-size: 1rem;
+}
+
+.mmm-fintech.large {
+  font-size: 1.25rem;
+}
+
+.mmm-fintech.xlarge {
+  font-size: 1.5rem;
+}
+
 .mmm-fintech-header {
   font-size: 1.2em;
   margin-bottom: 10px;

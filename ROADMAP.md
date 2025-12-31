@@ -57,7 +57,7 @@ Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 - ✅ **Twelve Data Integration**
   - Encrypted credential storage (`setup-twelvedata.js`)
   - Stocks, ETFs, mutual funds via `/quote` endpoint
-  - Forex rates via `/exchange_rate` endpoint
+  - Forex rates via `/quote` endpoint (with 24h change)
   - Credit tracking via response headers
 
 - ✅ **Asset Type Support**
@@ -72,9 +72,10 @@ Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 
 - ✅ **Frontend Enhancements**
   - Price per unit column (`showPricePerUnit` config)
-  - Forex display section (`showForex` config)
+  - Forex display section with 24h change (`showForex` config)
   - Automatic inverse forex pair generation
   - Smart rate formatting based on magnitude
+  - Default title changed to "Portfolio"
 
 **Manual Holdings Structure**:
 ```json
@@ -103,15 +104,28 @@ Automatic ingestion of brokerage account holdings via Plaid.
 - [ ] Position quantity tracking
 - [ ] Secure token storage
 
-## 📋 Phase 3.3 - Enhanced Financial Metrics
+## 📋 Phase 3.3 - Cost Basis & Gain/Loss Tracking
 
-**Status**: Planning
+**Status**: Planning (after Phase 3.2)
 
-- [ ] Percent change since last market close for equities
-- [ ] Intraday vs. overnight change tracking
-- [ ] Cost basis tracking
-- [ ] Unrealized gain/loss calculation
-- [ ] Total return percentage
+Add cost basis tracking and unrealized gain/loss display.
+
+**Data Source Analysis**:
+| Source | Cost Basis Available? | Notes |
+|--------|----------------------|-------|
+| Coinbase | ✅ Yes | Portfolio Breakdown API has `cost_basis` and `average_entry_price` |
+| Twelve Data | ❌ No | Market data only, not portfolio tracking |
+| Plaid | ⚠️ TBD | May provide cost basis from connected brokerages |
+| Manual | ⚠️ User-provided | Add `costBasis` field to manual-holdings.json |
+
+**Implementation Tasks**:
+- [ ] Fetch cost basis from Coinbase Portfolio Breakdown API
+- [ ] Add `costBasis` field to manual holdings structure
+- [ ] Investigate Plaid cost basis availability
+- [ ] Calculate unrealized gain/loss (current value - cost basis)
+- [ ] Add gain/loss column to holdings table
+- [ ] Add total gain/loss to portfolio summary
+- [ ] Color coding for gains (green) and losses (red)
 
 ## 🔮 Future Enhancements
 

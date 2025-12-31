@@ -2,6 +2,38 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.6.0] - 2025-12-30
+
+### Added
+- **Privacy Mode**: Hide quantity and value columns
+  - `showQuantity` config option (default: true)
+  - When false, only shows symbol, price, and 24h change
+- **Currency Conversion**: Display values in any currency
+  - `currency` config option (default: "USD")
+  - Fetches conversion rate from Twelve Data automatically
+  - Supported: USD, EUR, GBP, JPY, CNY, PHP, CAD, AUD, CHF, INR, KRW, MXN, BRL, SGD, HKD
+- **Currency Style**: Choose symbol or code display
+  - `currencyStyle` config option: "symbol" ($, €, £) or "code" (USD, EUR, GBP)
+- **Crypto as Forex**: Display crypto prices in exchange rates section
+  - `cryptoAsForex` config option (array of symbols, e.g., `["BTC", "ETH"]`)
+  - Excludes specified crypto from holdings table and total value
+  - Shows as "BTC/USD: 94,250.00" in forex section
+- **Suppress Inverse Forex**: Option to hide auto-generated inverse pairs
+  - `showInverseForex` config option (default: true)
+  - When false, only shows configured pairs (not PHP/USD for USD/PHP)
+- **Configurable Font Size**: Adjust module text size
+  - `fontSize` config option: "xsmall", "small", "medium", "large", "xlarge"
+  - Applies to entire module
+
+### Changed
+- Default title changed from "Holdings" to "Portfolio"
+- Font size now controlled via config instead of hardcoded CSS class
+- Forex section now includes `cryptoForex` entries from config
+
+### Documentation
+- README.md updated with new config options and examples
+- AI-CONTEXT.md updated to v0.6.0 with new patterns
+
 ## [0.5.0] - 2025-12-29
 
 ### Added
@@ -12,7 +44,7 @@ All notable changes to MMM-Fintech are documented in this file.
   - Factory functions for provider creation and asset type routing
 - **Twelve Data Integration**: Support for traditional financial assets
   - Stocks, ETFs, mutual funds pricing via `/quote` endpoint
-  - Forex rates via `/exchange_rate` endpoint
+  - Forex rates via `/quote` endpoint (with 24h change)
   - Automatic inverse forex pair generation (USD/PHP → PHP/USD)
   - Credit tracking via response headers
   - Encrypted credential storage (`setup-twelvedata.js`)
@@ -27,7 +59,7 @@ All notable changes to MMM-Fintech are documented in this file.
 - **Price Per Unit Column**: New column showing price for each holding
   - Configurable via `showPricePerUnit` (default: true)
 - **Forex Display Section**: Separate section for exchange rates
-  - Shows all configured forex pairs with rates
+  - Shows all configured forex pairs with rates and 24h change
   - Configurable via `showForex` (default: true)
   - Smart formatting based on rate magnitude
 

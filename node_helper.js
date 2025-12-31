@@ -15,6 +15,7 @@ module.exports = NodeHelper.create({
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
     this.providers = {};
+    this.conversionRate = 1;
   },
 
   log: function(msg) {
@@ -85,6 +86,31 @@ module.exports = NodeHelper.create({
     }
 
     return this.providers.twelvedata || null;
+  },
+
+  fetchConversionRate: async function() {
+    var currency = this.config.currency || "USD";
+
+    if (currency === "USD") {
+      this.conversionRate = 1;
+      return;
+    }
+
+    if (!this.providers.twelvedata) {
+      this.log("TwelveData not available for currency conversion, using USD");
+      this.conversionRate = 1;
+      return;
+    }
+
+    try {
+      var pair = "USD/" + currency;
+      var rateData = await this.providers.twelvedata.fetchForexRate(pair);
+      this.conversionRate = rateData.rate;
+      this.log("Conversion rate USD/" + currency + ": " + this.conversionRate.toFixed(4));
+    } catch (error) {
+      this.logError("CONVERSION", "Failed to fetch conversion rate for " + currency, error.message);
+      this.conversionRate = 1;
+    }
   },
 
   schedulePriceUpdates: function() {
@@ -284,11 +310,33 @@ module.exports = NodeHelper.create({
     return rates;
   },
 
+  buildCryptoForex: function(holdings) {
+    var cryptoAsForex = this.config.cryptoAsForex || [];
+    var result = [];
+    var currency = this.config.currency || "USD";
+
+    for (var i = 0; i < holdings.length; i++) {
+      var h = holdings[i];
+      if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+        result.push({
+          pair: h.symbol + "/" + currency,
+          rate: h.price || 0,
+          change24h: h.change24h || 0,
+          isCrypto: true
+        });
+      }
+    }
+
+    return result;
+  },
+
   syncHoldings: async function() {
     var self = this;
     this.log("Starting holdings sync...");
 
     try {
+      await this.fetchConversionRate();
+
       var apiHoldings = [];
 
       if (this.providers.coinbase) {
@@ -320,7 +368,7 @@ module.exports = NodeHelper.create({
 
         try {
           var priceData = await provider.fetchPrice(holding.symbol);
-          holding.price = priceData.price;
+          holding.price = priceData.price * this.conversionRate;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
         } catch (error) {
@@ -348,15 +396,25 @@ module.exports = NodeHelper.create({
         forexRates = await this.fetchForexRates(manualData.forex);
       }
 
+      var cryptoForex = this.buildCryptoForex(allHoldings);
+
       var totalValue = 0;
+      var cryptoAsForex = this.config.cryptoAsForex || [];
       for (var j = 0; j < allHoldings.length; j++) {
-        totalValue += allHoldings[j].value;
+        var h = allHoldings[j];
+        if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+          continue;
+        }
+        totalValue += h.value;
       }
 
       var cache = {
         holdings: allHoldings,
         forex: forexRates,
+        cryptoForex: cryptoForex,
         totalValue: totalValue,
+        conversionRate: this.conversionRate,
+        currency: this.config.currency || "USD",
         lastUpdated: new Date().toISOString(),
         lastPriceUpdate: new Date().toISOString(),
         lastCryptoPriceUpdate: new Date().toISOString(),
@@ -390,6 +448,8 @@ module.exports = NodeHelper.create({
     }
 
     try {
+      await this.fetchConversionRate();
+
       var cacheData = fs.readFileSync(this.dataPath, "utf8");
       var cache = JSON.parse(cacheData);
       var updatedCount = 0;
@@ -411,7 +471,7 @@ module.exports = NodeHelper.create({
 
         try {
           var priceData = await provider.fetchPrice(holding.symbol);
-          holding.price = priceData.price;
+          holding.price = priceData.price * this.conversionRate;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
           updatedCount++;
@@ -439,12 +499,21 @@ module.exports = NodeHelper.create({
         }
       }
 
+      cache.cryptoForex = this.buildCryptoForex(cache.holdings);
+
       var totalValue = 0;
+      var cryptoAsForex = this.config.cryptoAsForex || [];
       for (var j = 0; j < cache.holdings.length; j++) {
-        totalValue += cache.holdings[j].value;
+        var h = cache.holdings[j];
+        if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+          continue;
+        }
+        totalValue += h.value;
       }
 
       cache.totalValue = totalValue;
+      cache.conversionRate = this.conversionRate;
+      cache.currency = this.config.currency || "USD";
       cache.lastPriceUpdate = new Date().toISOString();
 
       if (isCrypto) {

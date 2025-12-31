@@ -10,8 +10,10 @@ A MagicMirror² module for displaying consolidated financial holdings with real-
 - **Manual Holdings**: Support for staked assets and brokerage positions
 - **Real-time Pricing**: Configurable update intervals by asset type
 - **24h Change**: Shows percent change for each holding
-- **Portfolio Total**: Displays total USD value
-- **Forex Rates**: Display exchange rates with automatic inverse pairs
+- **Portfolio Total**: Displays total value in configurable currency
+- **Forex Rates**: Display exchange rates with optional inverse pairs
+- **Currency Conversion**: Display values in any currency (USD, EUR, GBP, etc.)
+- **Privacy Mode**: Hide quantity and value columns
 - **Secure Credentials**: AES-256-GCM encrypted API keys
 - **Error Indicators**: Visual warnings when sync fails
 - **Configurable Sorting**: By value or alphabetically
@@ -104,7 +106,7 @@ Create `manual-holdings.json` in the module folder:
 - `etf` - Exchange-traded funds (priced via Twelve Data)
 - `mutual_fund` - Mutual funds (priced via Twelve Data)
 
-**Forex Pairs**: Inverse rates are automatically generated (USD/PHP → PHP/USD)
+**Forex Pairs**: Inverse rates are automatically generated (can be disabled)
 
 ### 6. Configure MagicMirror
 
@@ -115,11 +117,10 @@ Add to your `config/config.js`:
   module: "MMM-Fintech",
   position: "top_right",
   config: {
-    title: "Holdings",
-    cryptoPriceUpdateInterval: 5 * 60 * 1000,   // 5 minutes
-    stockPriceUpdateInterval: 20 * 60 * 1000,   // 20 minutes
+    title: "Portfolio",
     showLastUpdated: true,
     showPricePerUnit: true,
+    showQuantity: true,
     showForex: true,
     sortBy: "value"
   }
@@ -130,17 +131,56 @@ Add to your `config/config.js`:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `title` | "Holdings" | Header text |
-| `cryptoPriceUpdateInterval` | 300000 | Crypto price refresh (5 min) |
-| `stockPriceUpdateInterval` | 1200000 | Stock/forex price refresh (20 min) |
-| `showLastUpdated` | true | Show last sync timestamp |
-| `showPricePerUnit` | true | Show price column |
-| `showForex` | true | Show forex rates section |
-| `sortBy` | "value" | Sort by "value" or "name" |
-| `maxRetries` | 6 | Maximum API retry attempts |
-| `holdingsSyncTime` | "07:45" | Daily holdings sync time (HH:MM) |
-| `staleHoldingsThreshold` | 90000000 | Holdings stale after 25 hours |
-| `stalePricesThreshold` | 3900000 | Prices stale after 65 minutes |
+| `title` | `"Portfolio"` | Header text |
+| `fontSize` | `"xsmall"` | Font size: `xsmall`, `small`, `medium`, `large`, `xlarge` |
+| `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
+| `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
+| `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
+| `stockPriceUpdateInterval` | `1200000` | Stock/forex price refresh (20 min) |
+| `showLastUpdated` | `true` | Show last sync timestamp |
+| `showPricePerUnit` | `true` | Show price column |
+| `showQuantity` | `true` | Show quantity and value columns |
+| `showForex` | `true` | Show forex rates section |
+| `showInverseForex` | `true` | Show inverse forex pairs (e.g., PHP/USD) |
+| `cryptoAsForex` | `[]` | Crypto symbols to show as forex rates (e.g., `["BTC", "ETH"]`) |
+| `sortBy` | `"value"` | Sort by `"value"` or `"name"` |
+| `maxRetries` | `6` | Maximum API retry attempts |
+| `holdingsSyncTime` | `"07:45"` | Daily holdings sync time (HH:MM) |
+| `staleHoldingsThreshold` | `90000000` | Holdings stale after 25 hours |
+| `stalePricesThreshold` | `3900000` | Prices stale after 65 minutes |
+
+## Example Configurations
+
+### Privacy Mode (hide quantities)
+```javascript
+config: {
+  showQuantity: false,
+  showPricePerUnit: true
+}
+```
+
+### Euro Display
+```javascript
+config: {
+  currency: "EUR",
+  currencyStyle: "symbol"
+}
+```
+
+### Show BTC/ETH as Exchange Rates
+```javascript
+config: {
+  cryptoAsForex: ["BTC", "ETH"],
+  showInverseForex: false
+}
+```
+
+### Large Font
+```javascript
+config: {
+  fontSize: "medium"
+}
+```
 
 ## Scheduling
 
@@ -152,6 +192,7 @@ Add to your `config/config.js`:
 
 **Twelve Data Free Tier**: 800 calls/day
 - With 20-minute intervals: ~720 calls/day for 10 symbols
+- Currency conversion adds 1 extra call per sync (if not USD)
 - Crypto uses Coinbase (separate limit)
 
 ## Files

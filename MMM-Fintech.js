@@ -4,19 +4,44 @@ Module.register("MMM-Fintech", {
     stockPriceUpdateInterval: 20 * 60 * 1000,
     showLastUpdated: true,
     showPricePerUnit: true,
+    showQuantity: true,
     showForex: true,
+    showInverseForex: true,
+    cryptoAsForex: [],
     sortBy: "value",
     title: "Portfolio",
     holdingsSyncTime: "07:45",
     staleHoldingsThreshold: 25 * 60 * 60 * 1000,
     stalePricesThreshold: 65 * 60 * 1000,
-    maxRetries: 6
+    maxRetries: 6,
+    currency: "USD",
+    currencyStyle: "symbol",
+    fontSize: "xsmall"
+  },
+
+  currencySymbols: {
+    USD: "$",
+    EUR: "€",
+    GBP: "£",
+    JPY: "¥",
+    CNY: "¥",
+    PHP: "₱",
+    CAD: "C$",
+    AUD: "A$",
+    CHF: "CHF",
+    INR: "₹",
+    KRW: "₩",
+    MXN: "MX$",
+    BRL: "R$",
+    SGD: "S$",
+    HKD: "HK$"
   },
 
   start: function () {
     Log.info("Starting module: " + this.name);
     this.holdings = [];
     this.forex = [];
+    this.cryptoForex = [];
     this.totalValue = 0;
     this.lastUpdated = null;
     this.lastPriceUpdate = null;
@@ -40,30 +65,35 @@ Module.register("MMM-Fintech", {
 
   getDom: function () {
     var wrapper = document.createElement("div");
-    wrapper.className = "mmm-fintech";
+    wrapper.className = "mmm-fintech " + this.config.fontSize;
 
     var header = document.createElement("div");
     header.className = "mmm-fintech-header";
     header.innerHTML = this.config.title;
     wrapper.appendChild(header);
 
-    if (!this.holdings.length) {
+    var displayHoldings = this.getDisplayHoldings();
+
+    if (!displayHoldings.length && !this.cryptoForex.length) {
       var empty = document.createElement("div");
-      empty.className = "dimmed xsmall";
+      empty.className = "dimmed";
       empty.innerHTML = "Loading holdings...";
       wrapper.appendChild(empty);
       return wrapper;
     }
 
-    wrapper.appendChild(this.buildHoldingsTable());
+    if (displayHoldings.length > 0) {
+      wrapper.appendChild(this.buildHoldingsTable(displayHoldings));
 
-    var totalDiv = document.createElement("div");
-    totalDiv.className = "mmm-fintech-total";
-    totalDiv.innerHTML = "Total: " + this.formatCurrency(this.totalValue);
-    wrapper.appendChild(totalDiv);
+      var totalDiv = document.createElement("div");
+      totalDiv.className = "mmm-fintech-total";
+      totalDiv.innerHTML = "Total: " + this.formatCurrency(this.totalValue);
+      wrapper.appendChild(totalDiv);
+    }
 
-    if (this.config.showForex && this.forex && this.forex.length > 0) {
-      wrapper.appendChild(this.buildForexSection());
+    var forexToShow = this.getDisplayForex();
+    if (this.config.showForex && forexToShow.length > 0) {
+      wrapper.appendChild(this.buildForexSection(forexToShow));
     }
 
     var warningData = this.getWarnings();
@@ -71,7 +101,7 @@ Module.register("MMM-Fintech", {
 
     if (this.config.showLastUpdated && this.lastUpdated) {
       var timestampDiv = document.createElement("div");
-      timestampDiv.className = "dimmed xsmall mmm-fintech-timestamp";
+      timestampDiv.className = "dimmed mmm-fintech-timestamp";
       if (isStale) {
         timestampDiv.classList.add("stale");
       }
@@ -81,7 +111,7 @@ Module.register("MMM-Fintech", {
 
     if (warningData.messages.length > 0) {
       var footer = document.createElement("div");
-      footer.className = "xsmall mmm-fintech-footer-warnings " + warningData.severity;
+      footer.className = "mmm-fintech-footer-warnings " + warningData.severity;
       footer.innerHTML = warningData.messages.join(" • ");
       wrapper.appendChild(footer);
     }
@@ -89,20 +119,57 @@ Module.register("MMM-Fintech", {
     return wrapper;
   },
 
-  buildHoldingsTable: function () {
+  getDisplayHoldings: function () {
+    var self = this;
+    var cryptoAsForex = this.config.cryptoAsForex || [];
+
+    return this.holdings.filter(function (h) {
+      if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+        return false;
+      }
+      return true;
+    });
+  },
+
+  getDisplayForex: function () {
+    var self = this;
+    var result = [];
+    var showInverse = this.config.showInverseForex;
+
+    for (var i = 0; i < this.forex.length; i++) {
+      var fx = this.forex[i];
+      if (fx.error) continue;
+      if (!showInverse && fx.isInverse) continue;
+      result.push(fx);
+    }
+
+    for (var j = 0; j < this.cryptoForex.length; j++) {
+      result.push(this.cryptoForex[j]);
+    }
+
+    return result;
+  },
+
+  buildHoldingsTable: function (holdings) {
     var table = document.createElement("table");
-    table.className = "xsmall mmm-fintech-table";
+    table.className = "mmm-fintech-table";
 
     var headerRow = document.createElement("tr");
-    var headerHtml = "<th></th><th class='mmm-fintech-qty-header'>Qty</th>";
+    var headerHtml = "<th></th>";
+    if (this.config.showQuantity) {
+      headerHtml += "<th class='mmm-fintech-qty-header'>Qty</th>";
+    }
     if (this.config.showPricePerUnit) {
       headerHtml += "<th class='mmm-fintech-price-header'>Price</th>";
     }
-    headerHtml += "<th class='mmm-fintech-value-header'>Value</th><th class='mmm-fintech-change-header'>24h</th>";
+    if (this.config.showQuantity) {
+      headerHtml += "<th class='mmm-fintech-value-header'>Value</th>";
+    }
+    headerHtml += "<th class='mmm-fintech-change-header'>24h</th>";
     headerRow.innerHTML = headerHtml;
     table.appendChild(headerRow);
 
-    var sortedHoldings = this.sortHoldings(this.holdings);
+    var sortedHoldings = this.sortHoldings(holdings);
 
     for (var i = 0; i < sortedHoldings.length; i++) {
       var h = sortedHoldings[i];
@@ -113,10 +180,12 @@ Module.register("MMM-Fintech", {
       symbolCell.innerHTML = h.symbol;
       row.appendChild(symbolCell);
 
-      var qtyCell = document.createElement("td");
-      qtyCell.className = "mmm-fintech-qty";
-      qtyCell.innerHTML = this.formatQuantity(h.quantity);
-      row.appendChild(qtyCell);
+      if (this.config.showQuantity) {
+        var qtyCell = document.createElement("td");
+        qtyCell.className = "mmm-fintech-qty";
+        qtyCell.innerHTML = this.formatQuantity(h.quantity);
+        row.appendChild(qtyCell);
+      }
 
       if (this.config.showPricePerUnit) {
         var priceCell = document.createElement("td");
@@ -125,10 +194,12 @@ Module.register("MMM-Fintech", {
         row.appendChild(priceCell);
       }
 
-      var valueCell = document.createElement("td");
-      valueCell.className = "mmm-fintech-value";
-      valueCell.innerHTML = this.formatCurrency(h.value);
-      row.appendChild(valueCell);
+      if (this.config.showQuantity) {
+        var valueCell = document.createElement("td");
+        valueCell.className = "mmm-fintech-value";
+        valueCell.innerHTML = this.formatCurrency(h.value);
+        row.appendChild(valueCell);
+      }
 
       var changeCell = document.createElement("td");
       changeCell.className = "mmm-fintech-change";
@@ -149,7 +220,7 @@ Module.register("MMM-Fintech", {
     return table;
   },
 
-  buildForexSection: function () {
+  buildForexSection: function (forexData) {
     var section = document.createElement("div");
     section.className = "mmm-fintech-forex-section";
 
@@ -159,14 +230,10 @@ Module.register("MMM-Fintech", {
     section.appendChild(header);
 
     var table = document.createElement("table");
-    table.className = "xsmall mmm-fintech-forex-table";
+    table.className = "mmm-fintech-forex-table";
 
-    for (var i = 0; i < this.forex.length; i++) {
-      var fx = this.forex[i];
-
-      if (fx.error) {
-        continue;
-      }
+    for (var i = 0; i < forexData.length; i++) {
+      var fx = forexData[i];
 
       var row = document.createElement("tr");
 
@@ -288,10 +355,19 @@ Module.register("MMM-Fintech", {
   },
 
   formatCurrency: function (value) {
-    return "$" + value.toLocaleString("en-US", {
+    var currency = this.config.currency || "USD";
+    var style = this.config.currencyStyle || "symbol";
+    var formattedValue = value.toLocaleString("en-US", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     });
+
+    if (style === "symbol") {
+      var symbol = this.currencySymbols[currency] || currency;
+      return symbol + formattedValue;
+    } else {
+      return formattedValue + " " + currency;
+    }
   },
 
   formatForexRate: function (rate) {
@@ -312,6 +388,7 @@ Module.register("MMM-Fintech", {
     if (notification === "MMM-FINTECH_DATA") {
       this.holdings = payload.holdings || [];
       this.forex = payload.forex || [];
+      this.cryptoForex = payload.cryptoForex || [];
       this.totalValue = payload.totalValue || 0;
       this.lastUpdated = payload.lastUpdated || null;
       this.lastPriceUpdate = payload.lastPriceUpdate || null;
