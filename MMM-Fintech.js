@@ -16,7 +16,7 @@ Module.register("MMM-Fintech", {
     maxRetries: 6,
     currency: "USD",
     currencyStyle: "symbol",
-    fontSize: "xsmall"
+    fontSize: 100
   },
 
   currencySymbols: {
@@ -65,7 +65,8 @@ Module.register("MMM-Fintech", {
 
   getDom: function () {
     var wrapper = document.createElement("div");
-    wrapper.className = "mmm-fintech " + this.config.fontSize;
+    wrapper.className = "mmm-fintech";
+    wrapper.style.fontSize = this.config.fontSize + "%";
 
     var header = document.createElement("div");
     header.className = "mmm-fintech-header";
