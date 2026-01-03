@@ -225,24 +225,31 @@ Module.register("MMM-Fintech", {
   },
 
   buildTotalRow: function (table) {
-    var colCount = this.getColumnCount();
     var row = document.createElement("tr");
     row.className = "mmm-fintech-total-row";
 
-    var labelColSpan = colCount - 2;
     var labelCell = document.createElement("td");
     labelCell.className = "mmm-fintech-total-label";
-    labelCell.colSpan = labelColSpan;
     labelCell.innerHTML = "Total:";
     row.appendChild(labelCell);
+
+    if (this.config.showQuantity) {
+      var emptyQty = document.createElement("td");
+      row.appendChild(emptyQty);
+    }
+
+    if (this.config.showPricePerUnit) {
+      var emptyPrice = document.createElement("td");
+      row.appendChild(emptyPrice);
+    }
 
     var valueCell = document.createElement("td");
     valueCell.className = "mmm-fintech-total-value";
     valueCell.innerHTML = this.formatCurrency(this.totalValue);
     row.appendChild(valueCell);
 
-    var emptyCell = document.createElement("td");
-    row.appendChild(emptyCell);
+    var emptyChange = document.createElement("td");
+    row.appendChild(emptyChange);
 
     table.appendChild(row);
   },
@@ -268,11 +275,14 @@ Module.register("MMM-Fintech", {
       pairCell.innerHTML = fx.pair;
       row.appendChild(pairCell);
 
-      var spacerColSpan = colCount - 3;
-      if (spacerColSpan > 0) {
-        var spacerCell = document.createElement("td");
-        spacerCell.colSpan = spacerColSpan;
-        row.appendChild(spacerCell);
+      if (this.config.showQuantity) {
+        var emptyQty = document.createElement("td");
+        row.appendChild(emptyQty);
+      }
+
+      if (this.config.showPricePerUnit) {
+        var emptyPrice = document.createElement("td");
+        row.appendChild(emptyPrice);
       }
 
       var rateCell = document.createElement("td");
