@@ -127,15 +127,77 @@ Add cost basis tracking and unrealized gain/loss display.
 - [ ] Add total gain/loss to portfolio summary
 - [ ] Color coding for gains (green) and losses (red)
 
+## 📋 Phase 4 - Portfolio Performance Charts
+
+**Status**: Planning
+
+Add visual performance charts for portfolio tracking over time.
+
+### Features
+
+- **Total Portfolio Value Chart**
+  - Built from daily snapshots (starting from implementation date)
+  - Time period selector: 1D, 1W, 1M, 3M, 1Y, All
+  - Displayed below holdings table
+
+- **Individual Holding Charts** (optional)
+  - Configurable via `chartHoldings` array
+  - Half-size charts stacked below main portfolio chart
+  - Historical price data from Twelve Data `/time_series` endpoint
+
+- **Toggle to show/hide charts**
+
+### Data Storage
+
+- Local JSON file (`history.json`, gitignored)
+- Daily snapshot at US market close (4:00 PM ET)
+- Configurable retention period (default: 5 years)
+
+**Snapshot Structure**:
+```json
+{
+  "date": "2025-01-02",
+  "totalValue": 152340.50,
+  "holdings": {
+    "NVDA": { "quantity": 72.49, "price": 187.72, "value": 13609.42 },
+    "ETH": { "quantity": 0.38, "price": 3350.00, "value": 1273.00 }
+  }
+}
+```
+
+### Technical
+
+- Chart.js library for rendering
+- ~1KB per daily snapshot (~365KB/year)
+
+### Config Options
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `showCharts` | `false` | Enable/disable chart display |
+| `chartHoldings` | `[]` | Array of symbols for individual holding charts |
+| `historyRetention` | `1825` | Days to retain history (default: 5 years) |
+
+### Implementation Tasks
+
+- [ ] Add Chart.js dependency
+- [ ] Create `history.json` storage with daily snapshot logic
+- [ ] Schedule snapshot at US market close (4:00 PM ET)
+- [ ] Implement history retention/cleanup
+- [ ] Build total portfolio value chart component
+- [ ] Build individual holding chart component
+- [ ] Add time period selector (1D, 1W, 1M, 3M, 1Y, All)
+- [ ] Fetch historical prices from Twelve Data `/time_series`
+- [ ] Add config options and toggle
+
 ## 🔮 Future Enhancements
 
 Features under consideration for future phases:
 
 ### Performance Tracking
-- Historical portfolio value tracking
-- Performance charts and graphs
 - Benchmark comparison (S&P 500, etc.)
 - Dividend tracking and income reporting
+- Percentage vs dollar gain views
 
 ### Advanced Features
 - Multiple currency support
@@ -162,6 +224,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
+- **v0.6.0** (2025-12-30) - Display enhancements: privacy mode, currency conversion, crypto as forex, percentage-based font size
 - **v0.5.0** (2025-12-29) - Phase 3.1 complete: Multi-asset support, Twelve Data integration, provider architecture
 - **v0.4.0** (2025-12-29) - Phase 2 complete: Stale data detection, health notifications, enhanced error handling
 - **v0.3.0** (2025-12-27) - Phase 2: Retry logic with exponential backoff
