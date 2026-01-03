@@ -63,6 +63,13 @@ Module.register("MMM-Fintech", {
     return ["MMM-Fintech.css"];
   },
 
+  getColumnCount: function () {
+    var count = 2;
+    if (this.config.showQuantity) count += 2;
+    if (this.config.showPricePerUnit) count += 1;
+    return count;
+  },
+
   getDom: function () {
     var wrapper = document.createElement("div");
     wrapper.className = "mmm-fintech";
@@ -83,19 +90,20 @@ Module.register("MMM-Fintech", {
       return wrapper;
     }
 
-    if (displayHoldings.length > 0) {
-      wrapper.appendChild(this.buildHoldingsTable(displayHoldings));
+    var table = document.createElement("table");
+    table.className = "mmm-fintech-table";
 
-      var totalDiv = document.createElement("div");
-      totalDiv.className = "mmm-fintech-total";
-      totalDiv.innerHTML = "Total: " + this.formatCurrency(this.totalValue);
-      wrapper.appendChild(totalDiv);
+    if (displayHoldings.length > 0) {
+      this.buildHoldingsRows(table, displayHoldings);
+      this.buildTotalRow(table);
     }
 
     var forexToShow = this.getDisplayForex();
     if (this.config.showForex && forexToShow.length > 0) {
-      wrapper.appendChild(this.buildForexSection(forexToShow));
+      this.buildForexRows(table, forexToShow);
     }
+
+    wrapper.appendChild(table);
 
     var warningData = this.getWarnings();
     var isStale = this.isDataStale();
@@ -151,10 +159,7 @@ Module.register("MMM-Fintech", {
     return result;
   },
 
-  buildHoldingsTable: function (holdings) {
-    var table = document.createElement("table");
-    table.className = "mmm-fintech-table";
-
+  buildHoldingsRows: function (table, holdings) {
     var headerRow = document.createElement("tr");
     var headerHtml = "<th></th>";
     if (this.config.showQuantity) {
@@ -217,31 +222,58 @@ Module.register("MMM-Fintech", {
 
       table.appendChild(row);
     }
-
-    return table;
   },
 
-  buildForexSection: function (forexData) {
-    var section = document.createElement("div");
-    section.className = "mmm-fintech-forex-section";
+  buildTotalRow: function (table) {
+    var colCount = this.getColumnCount();
+    var row = document.createElement("tr");
+    row.className = "mmm-fintech-total-row";
 
-    var header = document.createElement("div");
-    header.className = "mmm-fintech-forex-header";
-    header.innerHTML = "Exchange Rates";
-    section.appendChild(header);
+    var labelColSpan = colCount - 2;
+    var labelCell = document.createElement("td");
+    labelCell.className = "mmm-fintech-total-label";
+    labelCell.colSpan = labelColSpan;
+    labelCell.innerHTML = "Total:";
+    row.appendChild(labelCell);
 
-    var table = document.createElement("table");
-    table.className = "mmm-fintech-forex-table";
+    var valueCell = document.createElement("td");
+    valueCell.className = "mmm-fintech-total-value";
+    valueCell.innerHTML = this.formatCurrency(this.totalValue);
+    row.appendChild(valueCell);
+
+    var emptyCell = document.createElement("td");
+    row.appendChild(emptyCell);
+
+    table.appendChild(row);
+  },
+
+  buildForexRows: function (table, forexData) {
+    var colCount = this.getColumnCount();
+
+    var headerRow = document.createElement("tr");
+    headerRow.className = "mmm-fintech-forex-header-row";
+    var headerCell = document.createElement("td");
+    headerCell.colSpan = colCount;
+    headerCell.className = "mmm-fintech-forex-header";
+    headerCell.innerHTML = "Exchange Rates";
+    headerRow.appendChild(headerCell);
+    table.appendChild(headerRow);
 
     for (var i = 0; i < forexData.length; i++) {
       var fx = forexData[i];
-
       var row = document.createElement("tr");
 
       var pairCell = document.createElement("td");
       pairCell.className = "mmm-fintech-forex-pair";
       pairCell.innerHTML = fx.pair;
       row.appendChild(pairCell);
+
+      var spacerColSpan = colCount - 3;
+      if (spacerColSpan > 0) {
+        var spacerCell = document.createElement("td");
+        spacerCell.colSpan = spacerColSpan;
+        row.appendChild(spacerCell);
+      }
 
       var rateCell = document.createElement("td");
       rateCell.className = "mmm-fintech-forex-rate";
@@ -264,9 +296,6 @@ Module.register("MMM-Fintech", {
 
       table.appendChild(row);
     }
-
-    section.appendChild(table);
-    return section;
   },
 
   isDataStale: function () {

@@ -61,33 +61,39 @@
   color: #f55;
 }
 
-.mmm-fintech-total {
-  margin-top: 10px;
-  padding-top: 10px;
+.mmm-fintech-total-row {
   border-top: 1px solid rgba(255, 255, 255, 0.3);
-  text-align: right;
 }
 
-.mmm-fintech-forex-section {
-  margin-top: 15px;
+.mmm-fintech-total-row td {
   padding-top: 10px;
+}
+
+.mmm-fintech-total-label {
+  text-align: right;
+  padding-right: 15px;
+}
+
+.mmm-fintech-total-value {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-forex-header-row td {
+  padding-top: 15px;
+  padding-bottom: 8px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
 }
 
 .mmm-fintech-forex-header {
   font-size: 0.9em;
   opacity: 0.8;
-  margin-bottom: 8px;
-}
-
-.mmm-fintech-forex-table {
-  width: 100%;
-  border-collapse: collapse;
+  text-align: left;
 }
 
 .mmm-fintech-forex-pair {
   text-align: left;
-  padding-right: 15px;
 }
 
 .mmm-fintech-forex-rate {
