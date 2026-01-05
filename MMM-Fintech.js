@@ -175,14 +175,12 @@ Module.register("MMM-Fintech", {
   },
 
   getDisplayForex: function () {
-    var self = this;
     var result = [];
-    var showInverse = this.config.showInverseForex;
 
     for (var i = 0; i < this.forex.length; i++) {
       var fx = this.forex[i];
       if (fx.error) continue;
-      if (!showInverse && fx.isInverse) continue;
+      if (fx.isInverse) continue;
       result.push(fx);
     }
 
@@ -290,14 +288,33 @@ Module.register("MMM-Fintech", {
 
   buildForexRows: function (table, forexData) {
     var colCount = this.getColumnCount();
+    var showInverse = this.config.showInverseForex;
+
+    var titleRow = document.createElement("tr");
+    titleRow.className = "mmm-fintech-forex-title-row";
+    var titleCell = document.createElement("td");
+    titleCell.colSpan = colCount;
+    titleCell.className = "mmm-fintech-forex-title";
+    titleCell.innerHTML = "Exchange Rates";
+    titleRow.appendChild(titleCell);
+    table.appendChild(titleRow);
 
     var headerRow = document.createElement("tr");
     headerRow.className = "mmm-fintech-forex-header-row";
-    var headerCell = document.createElement("td");
-    headerCell.colSpan = colCount;
-    headerCell.className = "mmm-fintech-forex-header";
-    headerCell.innerHTML = "Exchange Rates";
-    headerRow.appendChild(headerCell);
+    var headerHtml = "<th>Currencies</th>";
+    if (this.config.showQuantity) {
+      if (showInverse) {
+        headerHtml += "<th class='mmm-fintech-forex-inverse-header'>Inverse</th>";
+      } else {
+        headerHtml += "<th></th>";
+      }
+    }
+    if (this.config.showPricePerUnit) {
+      headerHtml += "<th></th>";
+    }
+    headerHtml += "<th class='mmm-fintech-forex-rate-header'>Rate</th>";
+    headerHtml += "<th class='mmm-fintech-forex-change-header'>24h</th>";
+    headerRow.innerHTML = headerHtml;
     table.appendChild(headerRow);
 
     for (var i = 0; i < forexData.length; i++) {
@@ -310,8 +327,12 @@ Module.register("MMM-Fintech", {
       row.appendChild(pairCell);
 
       if (this.config.showQuantity) {
-        var emptyQty = document.createElement("td");
-        row.appendChild(emptyQty);
+        var inverseCell = document.createElement("td");
+        inverseCell.className = "mmm-fintech-forex-inverse";
+        if (showInverse && fx.rate > 0) {
+          inverseCell.innerHTML = this.formatForexRate(1 / fx.rate);
+        }
+        row.appendChild(inverseCell);
       }
 
       if (this.config.showPricePerUnit) {

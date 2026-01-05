@@ -107,7 +107,7 @@ Create `manual-holdings.json` in the module folder:
 - `etf` - Exchange-traded funds (priced via Twelve Data)
 - `mutual_fund` - Mutual funds (priced via Twelve Data)
 
-**Forex Pairs**: Inverse rates are automatically generated (can be disabled)
+**Forex Pairs**: Inverse rates shown as a column (can be hidden via `showInverseForex: false`)
 
 ### 6. Configure MagicMirror
 
@@ -142,7 +142,7 @@ Add to your `config/config.js`:
 | `showPricePerUnit` | `true` | Show price column |
 | `showQuantity` | `true` | Show quantity, value columns, and total row |
 | `showForex` | `true` | Show forex rates section |
-| `showInverseForex` | `true` | Show inverse forex pairs (e.g., PHP/USD) |
+| `showInverseForex` | `true` | Show inverse rate column in forex section |
 | `cryptoAsForex` | `[]` | Crypto symbols to show as forex rates (e.g., `["BTC", "ETH"]`) |
 | `sortBy` | `"value"` | Sort by `"value"` or `"name"` |
 | `maxRetries` | `6` | Maximum API retry attempts |
