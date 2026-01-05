@@ -1,0 +1,356 @@
+From 0757cd9d0f271ac3a46f0bf4f696374e422a96be Mon Sep 17 00:00:00 2001
+From: Codex <codex@openai.com>
+Date: Mon, 5 Jan 2026 01:19:01 +0000
+Subject: [PATCH] Add market-hours scheduling for Twelve Data polling; privacy
+ total hide; reset symbol warnings
+
+### Motivation
+
+- Avoid polling Twelve Data outside of configured market windows to reduce rate-limit/errors and stale values.
+- Allow a single post-close poll for equities while preventing repeated off-hours polling.
+- Prevent leaking portfolio totals when privacy mode hides quantity/value columns.
+- Ensure invalid/rate-limited symbol warnings reflect the current holdings sync rather than stale state.
+
+### Description
+
+- Add a `marketHours` default to `MMM-Fintech.js` and make the total/value row conditional on `this.config.showQuantity` to support privacy mode.
+- Implement market scheduling and decision helpers in `node_helper.js` (`getMarketSchedule`, `parseTimeToMinutes`, `getZonedTimeParts`, `isForexMarketOpen`, `isWithinMarketWindow`, `shouldAllowPostClosePoll`, `canUpdateAssetType`, `getMarketDecision`, `logMarketStatus`) and new state fields `postClosePollByType` and `lastMarketStatusLog`.
+- Gate `updatePricesByType` (and manual forex refresh) using per-asset `marketDecisions` to skip updates outside the configured windows and emit throttled status logs when skipping.
+- Reset symbol warning state at the start of `syncHoldings` (`this.invalidSymbols = []; this.rateLimitedSymbols = [];`) and document the `marketHours` config in `README.md`.
+
+### Testing
+
+- No automated tests were run for these changes.
+- No automated test failures reported because test suites were not executed.
+---
+ MMM-Fintech.js |  35 +++++++++-
+ README.md      |  37 +++++++++++
+ node_helper.js | 176 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 3 files changed, 246 insertions(+), 2 deletions(-)
+
+diff --git a/MMM-Fintech.js b/MMM-Fintech.js
+index abfb206..fe061ec 100644
+--- a/MMM-Fintech.js
++++ b/MMM-Fintech.js
+@@ -16,7 +16,36 @@ Module.register("MMM-Fintech", {
+     maxRetries: 6,
+     currency: "USD",
+     currencyStyle: "symbol",
+-    fontSize: 100
++    fontSize: 100,
++    marketHours: {
++      stock: {
++        enabled: true,
++        timezone: "America/New_York",
++        open: "09:30",
++        close: "16:00",
++        postClosePoll: true
++      },
++      etf: {
++        enabled: true,
++        timezone: "America/New_York",
++        open: "09:30",
++        close: "16:00",
++        postClosePoll: true
++      },
++      mutual_fund: {
++        enabled: true,
++        timezone: "America/New_York",
++        open: "09:30",
++        close: "16:00",
++        postClosePoll: true
++      },
++      forex: {
++        enabled: true,
++        timezone: "America/New_York",
++        open: "17:00",
++        close: "17:00"
++      }
++    }
+   },
+ 
+   currencySymbols: {
+@@ -95,7 +124,9 @@ Module.register("MMM-Fintech", {
+ 
+     if (displayHoldings.length > 0) {
+       this.buildHoldingsRows(table, displayHoldings);
+-      this.buildTotalRow(table);
++      if (this.config.showQuantity) {
++        this.buildTotalRow(table);
++      }
+     }
+ 
+     var forexToShow = this.getDisplayForex();
+diff --git a/README.md b/README.md
+index 2ae168a..f774175 100644
+--- a/README.md
++++ b/README.md
+@@ -148,6 +148,43 @@ Add to your `config/config.js`:
+ | `holdingsSyncTime` | `"07:45"` | Daily holdings sync time (HH:MM) |
+ | `staleHoldingsThreshold` | `90000000` | Holdings stale after 25 hours |
+ | `stalePricesThreshold` | `3900000` | Prices stale after 65 minutes |
++| `marketHours` | See below | Market-hour polling schedules by asset type |
++
++### Market Hours Scheduling (Twelve Data)
++
++Stock/ETF/mutual fund pricing can be limited to NYSE/Nasdaq regular trading hours, and forex can be limited to the 24/5 window. These schedules are enabled by default and can be customized or disabled per asset type.
++
++```javascript
++marketHours: {
++  stock: {
++    enabled: true,
++    timezone: "America/New_York",
++    open: "09:30",
++    close: "16:00",
++    postClosePoll: true
++  },
++  etf: {
++    enabled: true,
++    timezone: "America/New_York",
++    open: "09:30",
++    close: "16:00",
++    postClosePoll: true
++  },
++  mutual_fund: {
++    enabled: true,
++    timezone: "America/New_York",
++    open: "09:30",
++    close: "16:00",
++    postClosePoll: true
++  },
++  forex: {
++    enabled: true,
++    timezone: "America/New_York",
++    open: "17:00",
++    close: "17:00"
++  }
++}
++```
+ 
+ ## Example Configurations
+ 
+diff --git a/node_helper.js b/node_helper.js
+index 5393134..d398532 100644
+--- a/node_helper.js
++++ b/node_helper.js
+@@ -16,6 +16,8 @@ module.exports = NodeHelper.create({
+     this.rateLimitedSymbols = [];
+     this.providers = {};
+     this.conversionRate = 1;
++    this.postClosePollByType = {};
++    this.lastMarketStatusLog = {};
+   },
+ 
+   log: function(msg) {
+@@ -137,6 +139,167 @@ module.exports = NodeHelper.create({
+     }, stockInterval);
+   },
+ 
++  getMarketSchedule: function(assetType) {
++    var schedules = (this.config && this.config.marketHours) || {};
++    return schedules[assetType] || null;
++  },
++
++  parseTimeToMinutes: function(value) {
++    if (!value) {
++      return null;
++    }
++    var parts = value.split(":");
++    if (parts.length < 2) {
++      return null;
++    }
++    var hours = parseInt(parts[0], 10);
++    var minutes = parseInt(parts[1], 10);
++    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
++      return null;
++    }
++    return hours * 60 + minutes;
++  },
++
++  getZonedTimeParts: function(timezone) {
++    var now = new Date();
++    var formatter = new Intl.DateTimeFormat("en-US", {
++      timeZone: timezone,
++      weekday: "short",
++      year: "numeric",
++      month: "2-digit",
++      day: "2-digit",
++      hour: "2-digit",
++      minute: "2-digit",
++      hour12: false
++    });
++
++    var parts = formatter.formatToParts(now);
++    var result = {};
++    for (var i = 0; i < parts.length; i++) {
++      result[parts[i].type] = parts[i].value;
++    }
++
++    var weekdayMap = {
++      Sun: 0,
++      Mon: 1,
++      Tue: 2,
++      Wed: 3,
++      Thu: 4,
++      Fri: 5,
++      Sat: 6
++    };
++
++    return {
++      weekday: weekdayMap[result.weekday],
++      dateKey: result.year + "-" + result.month + "-" + result.day,
++      minutes: parseInt(result.hour, 10) * 60 + parseInt(result.minute, 10)
++    };
++  },
++
++  isForexMarketOpen: function(schedule, zonedParts) {
++    var openMinutes = this.parseTimeToMinutes(schedule.open);
++    var closeMinutes = this.parseTimeToMinutes(schedule.close);
++    if (openMinutes === null || closeMinutes === null) {
++      return true;
++    }
++
++    var day = zonedParts.weekday;
++    var minutes = zonedParts.minutes;
++
++    if (day === 6) {
++      return false;
++    }
++
++    if (day === 0) {
++      return minutes >= openMinutes;
++    }
++
++    if (day === 5) {
++      return minutes < closeMinutes;
++    }
++
++    return true;
++  },
++
++  isWithinMarketWindow: function(schedule, zonedParts) {
++    var openMinutes = this.parseTimeToMinutes(schedule.open);
++    var closeMinutes = this.parseTimeToMinutes(schedule.close);
++    if (openMinutes === null || closeMinutes === null) {
++      return true;
++    }
++    var minutes = zonedParts.minutes;
++    return minutes >= openMinutes && minutes < closeMinutes;
++  },
++
++  shouldAllowPostClosePoll: function(assetType, schedule, zonedParts) {
++    if (!schedule.postClosePoll) {
++      return false;
++    }
++    var closeMinutes = this.parseTimeToMinutes(schedule.close);
++    if (closeMinutes === null) {
++      return false;
++    }
++
++    var minutes = zonedParts.minutes;
++    var day = zonedParts.weekday;
++
++    if (day === 0 || day === 6) {
++      return false;
++    }
++
++    if (minutes < closeMinutes) {
++      return false;
++    }
++
++    var lastKey = this.postClosePollByType[assetType];
++    if (lastKey === zonedParts.dateKey) {
++      return false;
++    }
++
++    this.postClosePollByType[assetType] = zonedParts.dateKey;
++    return true;
++  },
++
++  canUpdateAssetType: function(assetType) {
++    var schedule = this.getMarketSchedule(assetType);
++    if (!schedule || schedule.enabled === false) {
++      return true;
++    }
++
++    var timezone = schedule.timezone || "America/New_York";
++    var zonedParts = this.getZonedTimeParts(timezone);
++
++    if (assetType === "forex") {
++      return this.isForexMarketOpen(schedule, zonedParts);
++    }
++
++    if (this.isWithinMarketWindow(schedule, zonedParts)) {
++      return true;
++    }
++
++    return this.shouldAllowPostClosePoll(assetType, schedule, zonedParts);
++  },
++
++  getMarketDecision: function(assetType, decisions) {
++    if (decisions && Object.prototype.hasOwnProperty.call(decisions, assetType)) {
++      return decisions[assetType];
++    }
++    var allowed = this.canUpdateAssetType(assetType);
++    if (decisions) {
++      decisions[assetType] = allowed;
++    }
++    return allowed;
++  },
++
++  logMarketStatus: function(assetType, message) {
++    var now = Date.now();
++    var lastLog = this.lastMarketStatusLog[assetType] || 0;
++    if (now - lastLog > 5 * 60 * 1000) {
++      this.log(message);
++      this.lastMarketStatusLog[assetType] = now;
++    }
++  },
++
+   syncIfStale: function() {
+     if (!fs.existsSync(this.dataPath)) {
+       this.log("No cache file found, triggering holdings sync");
+@@ -333,6 +496,8 @@ module.exports = NodeHelper.create({
+   syncHoldings: async function() {
+     var self = this;
+     this.log("Starting holdings sync...");
++    this.invalidSymbols = [];
++    this.rateLimitedSymbols = [];
+ 
+     try {
+       await this.fetchConversionRate();
+@@ -454,6 +619,8 @@ module.exports = NodeHelper.create({
+       var cache = JSON.parse(cacheData);
+       var updatedCount = 0;
+ 
++      var marketDecisions = {};
++
+       for (var i = 0; i < cache.holdings.length; i++) {
+         var holding = cache.holdings[i];
+         var holdingType = holding.type || "crypto";
+@@ -463,6 +630,11 @@ module.exports = NodeHelper.create({
+           continue;
+         }
+ 
++        if (!isCrypto && !this.getMarketDecision(holdingType, marketDecisions)) {
++          this.logMarketStatus(holdingType, "Market closed for " + holdingType + " updates, skipping price refresh");
++          continue;
++        }
++
+         var provider = this.getProviderForSymbol(holding);
+ 
+         if (!provider) {
+@@ -495,7 +667,11 @@ module.exports = NodeHelper.create({
+       if (!isCrypto) {
+         var manualData = this.loadManualData();
+         if (manualData.forex.length > 0) {
++          if (this.getMarketDecision("forex", marketDecisions)) {
+           cache.forex = await this.fetchForexRates(manualData.forex);
++          } else {
++            this.logMarketStatus("forex", "Forex market closed, skipping forex rate refresh");
++          }
+         }
+       }
+ 
+-- 
+2.43.0

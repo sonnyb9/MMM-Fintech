@@ -16,6 +16,8 @@ module.exports = NodeHelper.create({
     this.rateLimitedSymbols = [];
     this.providers = {};
     this.conversionRate = 1;
+    this.postClosePollByType = {};
+    this.lastMarketStatusLog = {};
   },
 
   log: function(msg) {
@@ -135,6 +137,180 @@ module.exports = NodeHelper.create({
     this.stockPriceInterval = setInterval(function() {
       self.updatePricesByType("stock");
     }, stockInterval);
+  },
+
+  getMarketSchedule: function(assetType) {
+    var schedules = (this.config && this.config.marketHours) || {};
+    return schedules[assetType] || null;
+  },
+
+  parseTimeToMinutes: function(timeStr) {
+    if (!timeStr) {
+      return null;
+    }
+    var parts = timeStr.split(":");
+    if (parts.length < 2) {
+      return null;
+    }
+    var hours = parseInt(parts[0], 10);
+    var minutes = parseInt(parts[1], 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return null;
+    }
+    return hours * 60 + minutes;
+  },
+
+  getZonedTimeParts: function(timezone) {
+    var now = new Date();
+    var formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+
+    var parts = formatter.formatToParts(now);
+    var result = {};
+    for (var i = 0; i < parts.length; i++) {
+      result[parts[i].type] = parts[i].value;
+    }
+
+    var weekdayMap = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6
+    };
+
+    return {
+      weekday: weekdayMap[result.weekday],
+      dateKey: result.year + "-" + result.month + "-" + result.day,
+      minutes: parseInt(result.hour, 10) * 60 + parseInt(result.minute, 10)
+    };
+  },
+
+  isForexMarketOpen: function(schedule, zonedParts) {
+    var sundayOpen = this.parseTimeToMinutes(schedule.sundayOpen);
+    var fridayClose = this.parseTimeToMinutes(schedule.fridayClose);
+
+    if (sundayOpen === null || fridayClose === null) {
+      return true;
+    }
+
+    var day = zonedParts.weekday;
+    var minutes = zonedParts.minutes;
+
+    if (day === 6) {
+      return false;
+    }
+
+    if (day === 0) {
+      return minutes >= sundayOpen;
+    }
+
+    if (day === 5) {
+      return minutes < fridayClose;
+    }
+
+    return true;
+  },
+
+  isWithinMarketWindow: function(schedule, zonedParts) {
+    var openMinutes = this.parseTimeToMinutes(schedule.open);
+    var closeMinutes = this.parseTimeToMinutes(schedule.close);
+
+    if (openMinutes === null || closeMinutes === null) {
+      return true;
+    }
+
+    var day = zonedParts.weekday;
+    var minutes = zonedParts.minutes;
+
+    var tradingDays = schedule.days || [1, 2, 3, 4, 5];
+    if (tradingDays.indexOf(day) === -1) {
+      return false;
+    }
+
+    return minutes >= openMinutes && minutes < closeMinutes;
+  },
+
+  shouldAllowPostClosePoll: function(assetType, schedule, zonedParts) {
+    if (!schedule.postClosePoll) {
+      return false;
+    }
+
+    var closeMinutes = this.parseTimeToMinutes(schedule.close);
+    if (closeMinutes === null) {
+      return false;
+    }
+
+    var day = zonedParts.weekday;
+    var minutes = zonedParts.minutes;
+
+    var tradingDays = schedule.days || [1, 2, 3, 4, 5];
+    if (tradingDays.indexOf(day) === -1) {
+      return false;
+    }
+
+    if (minutes < closeMinutes) {
+      return false;
+    }
+
+    var lastKey = this.postClosePollByType[assetType];
+    if (lastKey === zonedParts.dateKey) {
+      return false;
+    }
+
+    this.postClosePollByType[assetType] = zonedParts.dateKey;
+    return true;
+  },
+
+  canUpdateAssetType: function(assetType) {
+    var schedule = this.getMarketSchedule(assetType);
+
+    if (!schedule || schedule.enabled === false) {
+      return true;
+    }
+
+    var timezone = schedule.timezone || "America/New_York";
+    var zonedParts = this.getZonedTimeParts(timezone);
+
+    if (assetType === "forex") {
+      return this.isForexMarketOpen(schedule, zonedParts);
+    }
+
+    if (this.isWithinMarketWindow(schedule, zonedParts)) {
+      return true;
+    }
+
+    return this.shouldAllowPostClosePoll(assetType, schedule, zonedParts);
+  },
+
+  getMarketDecision: function(assetType, decisions) {
+    if (decisions && Object.prototype.hasOwnProperty.call(decisions, assetType)) {
+      return decisions[assetType];
+    }
+    var allowed = this.canUpdateAssetType(assetType);
+    if (decisions) {
+      decisions[assetType] = allowed;
+    }
+    return allowed;
+  },
+
+  logMarketStatus: function(assetType, message) {
+    var now = Date.now();
+    var lastLog = this.lastMarketStatusLog[assetType] || 0;
+    if (now - lastLog > 5 * 60 * 1000) {
+      this.log(message);
+      this.lastMarketStatusLog[assetType] = now;
+    }
   },
 
   syncIfStale: function() {
@@ -333,6 +509,8 @@ module.exports = NodeHelper.create({
   syncHoldings: async function() {
     var self = this;
     this.log("Starting holdings sync...");
+    this.invalidSymbols = [];
+    this.rateLimitedSymbols = [];
 
     try {
       await this.fetchConversionRate();
@@ -453,6 +631,9 @@ module.exports = NodeHelper.create({
       var cacheData = fs.readFileSync(this.dataPath, "utf8");
       var cache = JSON.parse(cacheData);
       var updatedCount = 0;
+      var skippedCount = 0;
+
+      var marketDecisions = {};
 
       for (var i = 0; i < cache.holdings.length; i++) {
         var holding = cache.holdings[i];
@@ -460,6 +641,11 @@ module.exports = NodeHelper.create({
         var isHoldingCrypto = holdingType === "crypto";
 
         if (isCrypto !== isHoldingCrypto) {
+          continue;
+        }
+
+        if (!isCrypto && !this.getMarketDecision(holdingType, marketDecisions)) {
+          skippedCount++;
           continue;
         }
 
@@ -495,7 +681,17 @@ module.exports = NodeHelper.create({
       if (!isCrypto) {
         var manualData = this.loadManualData();
         if (manualData.forex.length > 0) {
-          cache.forex = await this.fetchForexRates(manualData.forex);
+          if (this.getMarketDecision("forex", marketDecisions)) {
+            cache.forex = await this.fetchForexRates(manualData.forex);
+          } else {
+            this.logMarketStatus("forex", "Forex market closed, skipping forex rate refresh");
+          }
+        }
+      }
+
+      for (var assetType in marketDecisions) {
+        if (!marketDecisions[assetType]) {
+          this.logMarketStatus(assetType, "Market closed for " + assetType + ", skipped price refresh");
         }
       }
 
@@ -527,7 +723,11 @@ module.exports = NodeHelper.create({
       cache.rateLimitedSymbols = this.rateLimitedSymbols;
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
-      this.log("Updated " + updatedCount + " " + typeLabel + " prices");
+      if (skippedCount > 0) {
+        this.log("Updated " + updatedCount + " " + typeLabel + " prices, skipped " + skippedCount + " (market closed)");
+      } else {
+        this.log("Updated " + updatedCount + " " + typeLabel + " prices");
+      }
 
       this.clearError();
       this.sendSocketNotification("MMM-FINTECH_DATA", cache);

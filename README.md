@@ -9,11 +9,12 @@ A MagicMirror² module for displaying consolidated financial holdings with real-
 - **Twelve Data Integration**: Stocks, ETFs, mutual funds, and forex pricing
 - **Manual Holdings**: Support for staked assets and brokerage positions
 - **Real-time Pricing**: Configurable update intervals by asset type
+- **Market Hours Scheduling**: Limit stock/forex polling to market hours
 - **24h Change**: Shows percent change for each holding
 - **Portfolio Total**: Displays total value in configurable currency
 - **Forex Rates**: Display exchange rates with optional inverse pairs
 - **Currency Conversion**: Display values in any currency (USD, EUR, GBP, etc.)
-- **Privacy Mode**: Hide quantity and value columns
+- **Privacy Mode**: Hide quantity, value, and total
 - **Secure Credentials**: AES-256-GCM encrypted API keys
 - **Error Indicators**: Visual warnings when sync fails
 - **Configurable Sorting**: By value or alphabetically
@@ -132,14 +133,14 @@ Add to your `config/config.js`:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `title` | `"Portfolio"` | Header text |
-| `fontSize` | `"xsmall"` | Font size: `xsmall`, `small`, `medium`, `large`, `xlarge` |
+| `fontSize` | `100` | Font size as percentage (e.g., 80 for smaller, 120 for larger) |
 | `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
 | `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
 | `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
 | `stockPriceUpdateInterval` | `1200000` | Stock/forex price refresh (20 min) |
 | `showLastUpdated` | `true` | Show last sync timestamp |
 | `showPricePerUnit` | `true` | Show price column |
-| `showQuantity` | `true` | Show quantity and value columns |
+| `showQuantity` | `true` | Show quantity, value columns, and total row |
 | `showForex` | `true` | Show forex rates section |
 | `showInverseForex` | `true` | Show inverse forex pairs (e.g., PHP/USD) |
 | `cryptoAsForex` | `[]` | Crypto symbols to show as forex rates (e.g., `["BTC", "ETH"]`) |
@@ -148,10 +149,70 @@ Add to your `config/config.js`:
 | `holdingsSyncTime` | `"07:45"` | Daily holdings sync time (HH:MM) |
 | `staleHoldingsThreshold` | `90000000` | Holdings stale after 25 hours |
 | `stalePricesThreshold` | `3900000` | Prices stale after 65 minutes |
+| `marketHours` | See below | Market-hour polling schedules by asset type |
+
+## Market Hours Scheduling
+
+Stock, ETF, and mutual fund price updates are limited to US market hours by default. Forex updates follow the 24/5 forex market schedule (Sunday 5pm - Friday 5pm ET). This reduces unnecessary API calls and rate limit issues outside trading hours.
+
+**Default Configuration:**
+
+```javascript
+marketHours: {
+  stock: {
+    enabled: true,
+    timezone: "America/New_York",
+    open: "09:30",
+    close: "16:00",
+    days: [1, 2, 3, 4, 5],  // Mon-Fri (0=Sun, 6=Sat)
+    postClosePoll: true     // One final update after close
+  },
+  etf: {
+    enabled: true,
+    timezone: "America/New_York",
+    open: "09:30",
+    close: "16:00",
+    days: [1, 2, 3, 4, 5],
+    postClosePoll: true
+  },
+  mutual_fund: {
+    enabled: true,
+    timezone: "America/New_York",
+    open: "09:30",
+    close: "16:00",
+    days: [1, 2, 3, 4, 5],
+    postClosePoll: true
+  },
+  forex: {
+    enabled: true,
+    timezone: "America/New_York",
+    sundayOpen: "17:00",    // Market opens Sunday 5pm ET
+    fridayClose: "17:00"    // Market closes Friday 5pm ET
+  }
+}
+```
+
+**Disable Market Hours (poll 24/7):**
+
+```javascript
+config: {
+  marketHours: {
+    stock: { enabled: false },
+    etf: { enabled: false },
+    mutual_fund: { enabled: false },
+    forex: { enabled: false }
+  }
+}
+```
+
+**Key behaviors:**
+- **postClosePoll**: When enabled, allows one final price update after market close each trading day
+- **days**: Array of trading days (0=Sunday through 6=Saturday)
+- **Crypto**: Always updates regardless of market hours (24/7 market)
 
 ## Example Configurations
 
-### Privacy Mode (hide quantities)
+### Privacy Mode (hide quantities and total)
 ```javascript
 config: {
   showQuantity: false,
@@ -175,23 +236,24 @@ config: {
 }
 ```
 
-### Large Font
+### Smaller Font
 ```javascript
 config: {
-  fontSize: "medium"
+  fontSize: 80
 }
 ```
 
 ## Scheduling
 
 - **Holdings sync**: Daily at configured time (default: 7:45am), plus on startup if data >24 hours old
-- **Crypto prices**: Every 5 minutes (configurable)
-- **Stock/forex prices**: Every 20 minutes (configurable)
+- **Crypto prices**: Every 5 minutes (configurable), 24/7
+- **Stock/ETF prices**: Every 20 minutes during market hours (configurable)
+- **Forex prices**: Every 20 minutes during forex market hours (Sun 5pm - Fri 5pm ET)
 
 ## API Rate Limits
 
 **Twelve Data Free Tier**: 800 calls/day
-- With 20-minute intervals: ~720 calls/day for 10 symbols
+- With 20-minute intervals during market hours: ~200 calls/day for 10 symbols
 - Currency conversion adds 1 extra call per sync (if not USD)
 - Crypto uses Coinbase (separate limit)
 
@@ -258,6 +320,10 @@ node test-twelvedata.js    # Test Twelve Data
 **"Rate limit exceeded"**
 - Twelve Data: Wait for credit reset (per minute)
 - Coinbase: Uses exponential backoff automatically
+
+**"Market closed for stock, skipped price refresh"**
+- Normal behavior outside market hours
+- Set `marketHours.stock.enabled: false` to disable
 
 ## Roadmap
 

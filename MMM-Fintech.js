@@ -16,7 +16,39 @@ Module.register("MMM-Fintech", {
     maxRetries: 6,
     currency: "USD",
     currencyStyle: "symbol",
-    fontSize: 100
+    fontSize: 100,
+    marketHours: {
+      stock: {
+        enabled: true,
+        timezone: "America/New_York",
+        open: "09:30",
+        close: "16:00",
+        days: [1, 2, 3, 4, 5],
+        postClosePoll: true
+      },
+      etf: {
+        enabled: true,
+        timezone: "America/New_York",
+        open: "09:30",
+        close: "16:00",
+        days: [1, 2, 3, 4, 5],
+        postClosePoll: true
+      },
+      mutual_fund: {
+        enabled: true,
+        timezone: "America/New_York",
+        open: "09:30",
+        close: "16:00",
+        days: [1, 2, 3, 4, 5],
+        postClosePoll: true
+      },
+      forex: {
+        enabled: true,
+        timezone: "America/New_York",
+        sundayOpen: "17:00",
+        fridayClose: "17:00"
+      }
+    }
   },
 
   currencySymbols: {
@@ -95,7 +127,9 @@ Module.register("MMM-Fintech", {
 
     if (displayHoldings.length > 0) {
       this.buildHoldingsRows(table, displayHoldings);
-      this.buildTotalRow(table);
+      if (this.config.showQuantity) {
+        this.buildTotalRow(table);
+      }
     }
 
     var forexToShow = this.getDisplayForex();

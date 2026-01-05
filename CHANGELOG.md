@@ -2,10 +2,43 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
-## [0.6.0] - 2025-12-30
+## [0.5.0] - 2025-01-05
 
 ### Added
-- **Privacy Mode**: Hide quantity and value columns
+- **Multi-Asset Support**: Track crypto and traditional investments together
+  - Asset type field (`crypto`, `stock`, `etf`, `mutual_fund`, `forex`)
+  - Provider routing based on asset type
+  - Merge key changed to `symbol:type` to prevent cross-asset conflicts
+- **Provider Architecture**: Modular system for multiple data sources
+  - Base provider class with shared utilities (encryption, logging, retry)
+  - Coinbase provider extracted from monolithic node_helper
+  - Twelve Data provider for stocks, ETFs, mutual funds, forex
+  - Factory functions for provider creation and asset type routing
+- **Twelve Data Integration**: Support for traditional financial assets
+  - Stocks, ETFs, mutual funds pricing via `/quote` endpoint
+  - Forex rates via `/quote` endpoint (with 24h change)
+  - Automatic inverse forex pair generation (USD/PHP → PHP/USD)
+  - Credit tracking via response headers
+  - Encrypted credential storage (`setup-twelvedata.js`)
+- **Separate Update Intervals**: Different frequencies by asset class
+  - Crypto prices: every 5 minutes (configurable via `cryptoPriceUpdateInterval`)
+  - Stock/ETF/Forex prices: every 20 minutes (configurable via `stockPriceUpdateInterval`)
+  - Stays within Twelve Data free tier (800 calls/day)
+- **Market Hours Scheduling**: Limit Twelve Data polling to market hours
+  - Stocks/ETFs/mutual funds: Mon-Fri 9:30am-4pm ET (configurable)
+  - Forex: 24/5 schedule (Sunday 5pm - Friday 5pm ET)
+  - `marketHours` config option with per-asset-type settings
+  - `postClosePoll` option for one final update after market close
+  - `days` array to specify trading days (0=Sun through 6=Sat)
+  - Throttled logging (max every 5 min per asset type) when market closed
+  - Significantly reduces unnecessary API calls outside trading hours
+- **Price Per Unit Column**: New column showing price for each holding
+  - Configurable via `showPricePerUnit` (default: true)
+- **Forex Display Section**: Separate section for exchange rates
+  - Shows all configured forex pairs with rates and 24h change
+  - Configurable via `showForex` (default: true)
+  - Smart formatting based on rate magnitude
+- **Privacy Mode**: Hide quantity, value columns, and total row
   - `showQuantity` config option (default: true)
   - When false, only shows symbol, price, and 24h change
 - **Currency Conversion**: Display values in any currency
@@ -21,59 +54,26 @@ All notable changes to MMM-Fintech are documented in this file.
 - **Suppress Inverse Forex**: Option to hide auto-generated inverse pairs
   - `showInverseForex` config option (default: true)
   - When false, only shows configured pairs (not PHP/USD for USD/PHP)
-- **Configurable Font Size**: Adjust module text size
-  - `fontSize` config option: "xsmall", "small", "medium", "large", "xlarge"
-  - Applies to entire module
+- **Configurable Font Size**: Percentage-based font sizing
+  - `fontSize` config option (default: 100)
+  - Use values like 80 for smaller, 120 for larger
 
 ### Changed
 - Default title changed from "Holdings" to "Portfolio"
-- Font size now controlled via config instead of hardcoded CSS class
-- Forex section now includes `cryptoForex` entries from config
-
-### Documentation
-- README.md updated with new config options and examples
-- AI-CONTEXT.md updated to v0.6.0 with new patterns
-
-## [0.5.0] - 2025-12-29
-
-### Added
-- **Provider Architecture**: Modular system for multiple data sources
-  - Base provider class with shared utilities (encryption, logging, retry)
-  - Coinbase provider extracted from monolithic node_helper
-  - Twelve Data provider for stocks, ETFs, mutual funds, forex
-  - Factory functions for provider creation and asset type routing
-- **Twelve Data Integration**: Support for traditional financial assets
-  - Stocks, ETFs, mutual funds pricing via `/quote` endpoint
-  - Forex rates via `/quote` endpoint (with 24h change)
-  - Automatic inverse forex pair generation (USD/PHP → PHP/USD)
-  - Credit tracking via response headers
-  - Encrypted credential storage (`setup-twelvedata.js`)
-- **Multi-Asset Support**: Track crypto and traditional investments together
-  - Asset type field (`crypto`, `stock`, `etf`, `mutual_fund`, `forex`)
-  - Provider routing based on asset type
-  - Merge key changed to `symbol:type` to prevent cross-asset conflicts
-- **Separate Update Intervals**: Different frequencies by asset class
-  - Crypto prices: every 5 minutes (configurable via `cryptoPriceUpdateInterval`)
-  - Stock/ETF/Forex prices: every 20 minutes (configurable via `stockPriceUpdateInterval`)
-  - Stays within Twelve Data free tier (800 calls/day)
-- **Price Per Unit Column**: New column showing price for each holding
-  - Configurable via `showPricePerUnit` (default: true)
-- **Forex Display Section**: Separate section for exchange rates
-  - Shows all configured forex pairs with rates and 24h change
-  - Configurable via `showForex` (default: true)
-  - Smart formatting based on rate magnitude
-
-### Changed
 - `priceUpdateInterval` split into `cryptoPriceUpdateInterval` and `stockPriceUpdateInterval`
 - Manual holdings structure now requires `type` field for each holding
 - Manual holdings file now supports `forex` array for exchange rate pairs
 - Cache now tracks `lastCryptoPriceUpdate` and `lastStockPriceUpdate` separately
 - Provider initialization: Coinbase required, Twelve Data optional
+- Symbol warning lists reset at start of each holdings sync
+
+### Fixed
+- Column alignment for holdings, total, and forex sections now use individual cells instead of colspan
 
 ### Documentation
-- AI-CONTEXT.md updated with provider architecture details
-- README.md updated with multi-asset setup instructions
-- ROADMAP.md Phase 3.1 marked complete
+- README.md updated with market hours configuration and all new options
+- AI-CONTEXT.md updated to v0.5.0 with market hours implementation details
+- ROADMAP.md Phase 3.1 marked complete, Phase 4 (charts) added
 
 ## [0.4.0] - 2025-12-29
 
