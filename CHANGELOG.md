@@ -51,9 +51,9 @@ All notable changes to MMM-Fintech are documented in this file.
   - `cryptoAsForex` config option (array of symbols, e.g., `["BTC", "ETH"]`)
   - Excludes specified crypto from holdings table and total value
   - Shows as "BTC/USD: 94,250.00" in forex section
-- **Suppress Inverse Forex**: Option to hide auto-generated inverse pairs
+- **Suppress Inverse Forex**: Option to hide inverse rate column
   - `showInverseForex` config option (default: true)
-  - When false, only shows configured pairs (not PHP/USD for USD/PHP)
+  - When false, hides inverse rate column but maintains column alignment
 - **Configurable Font Size**: Percentage-based font sizing
   - `fontSize` config option (default: 100)
   - Use values like 80 for smaller, 120 for larger
@@ -66,6 +66,9 @@ All notable changes to MMM-Fintech are documented in this file.
 - Cache now tracks `lastCryptoPriceUpdate` and `lastStockPriceUpdate` separately
 - Provider initialization: Coinbase required, Twelve Data optional
 - Symbol warning lists reset at start of each holdings sync
+- Forex section redesigned: inverse rate now displayed as column instead of separate rows
+- Forex section title now matches module header style
+- Forex section has column headers (Currencies, Inverse, Rate, 24h)
 
 ### Fixed
 - Column alignment for holdings, total, and forex sections now use individual cells instead of colspan
