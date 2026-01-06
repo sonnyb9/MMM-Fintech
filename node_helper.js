@@ -313,6 +313,18 @@ module.exports = NodeHelper.create({
     }
   },
 
+  getManualHoldingsModTime: function() {
+    if (!fs.existsSync(this.manualHoldingsPath)) {
+      return null;
+    }
+    try {
+      var stats = fs.statSync(this.manualHoldingsPath);
+      return stats.mtime.toISOString();
+    } catch (error) {
+      return null;
+    }
+  },
+
   syncIfStale: function() {
     if (!fs.existsSync(this.dataPath)) {
       this.log("No cache file found, triggering holdings sync");
@@ -326,6 +338,15 @@ module.exports = NodeHelper.create({
 
       if (!cache.lastUpdated) {
         this.log("No lastUpdated timestamp, triggering holdings sync");
+        this.syncHoldings();
+        return;
+      }
+
+      var currentModTime = this.getManualHoldingsModTime();
+      var cachedModTime = cache.manualHoldingsModTime || null;
+
+      if (currentModTime && currentModTime !== cachedModTime) {
+        this.log("manual-holdings.json has changed, triggering sync");
         this.syncHoldings();
         return;
       }
@@ -597,6 +618,7 @@ module.exports = NodeHelper.create({
         lastPriceUpdate: new Date().toISOString(),
         lastCryptoPriceUpdate: new Date().toISOString(),
         lastStockPriceUpdate: new Date().toISOString(),
+        manualHoldingsModTime: this.getManualHoldingsModTime(),
         hasError: this.lastError !== null,
         invalidSymbols: this.invalidSymbols,
         rateLimitedSymbols: this.rateLimitedSymbols
