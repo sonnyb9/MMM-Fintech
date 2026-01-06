@@ -77,6 +77,11 @@ module.exports = NodeHelper.create({
 
   getProviderForSymbol: function(holding) {
     var assetType = holding.type || "crypto";
+
+    if (assetType === "cash") {
+      return null;
+    }
+
     var providerName = providers.getProviderForAssetType(assetType);
 
     if (providerName && this.providers[providerName]) {
@@ -555,6 +560,15 @@ module.exports = NodeHelper.create({
 
       for (var i = 0; i < allHoldings.length; i++) {
         var holding = allHoldings[i];
+        var assetType = holding.type || "crypto";
+
+        if (assetType === "cash") {
+          holding.price = 1.0 * this.conversionRate;
+          holding.change24h = 0;
+          holding.value = holding.quantity * holding.price;
+          continue;
+        }
+
         var provider = this.getProviderForSymbol(holding);
 
         if (!provider) {

@@ -106,6 +106,7 @@ Create `manual-holdings.json` in the module folder:
 - `stock` - Individual stocks (priced via Twelve Data)
 - `etf` - Exchange-traded funds (priced via Twelve Data)
 - `mutual_fund` - Mutual funds (priced via Twelve Data)
+- `cash` - Money market funds with stable $1.00 NAV (no API calls)
 
 **Forex Pairs**: Inverse rates shown as a column (can be hidden via `showInverseForex: false`)
 
