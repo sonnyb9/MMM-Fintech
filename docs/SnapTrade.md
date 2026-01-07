@@ -12,3 +12,7 @@ From `~/MagicMirror/modules/MMM-Fintech`:
 ```bash
 node setup-snaptrade.js
 node snaptrade-fetch-holdings.js
+
+## Troubleshooting: signature failures
+
+SnapTrade request signing uses a SignedContent payload. For GET endpoints, MMM-Fintech signs only `clientId` + `timestamp` in the `query` portion, and signs `userId`/`userSecret` (and other non-auth query params) in the `content` portion.
