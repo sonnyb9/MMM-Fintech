@@ -1,8 +1,8 @@
 # MMM-Fintech Roadmap
 
-This document outlines the development roadmap for MMM-Fintech, a MagicMirror² module for displaying consolidated financial holdings.
+This document outlines the development roadmap for MMM-Fintech, a MagicMirrorÂ² module for displaying consolidated financial holdings.
 
-## ✅ Phase 1 - Coinbase PoC (Complete)
+## âœ… Phase 1 - Coinbase PoC (Complete)
 
 **Status**: Released in v0.2.0
 
@@ -19,58 +19,58 @@ Core functionality for cryptocurrency tracking via Coinbase CDP API.
 - Error handling with warning indicator
 - Retry logic with exponential backoff
 
-## ✅ Phase 2 - Hardening (Complete)
+## âœ… Phase 2 - Hardening (Complete)
 
 **Status**: Released in v0.4.0
 
 Improve reliability and user feedback for production use.
 
-- ✅ **Retry logic with exponential backoff** (v0.3.0)
+- âœ… **Retry logic with exponential backoff** (v0.3.0)
   - Configurable max retries (default: 6)
   - Exponential backoff: 2s, 4s, 8s, 16s, 32s, 64s
   - Applied to both holdings and price fetches
 
-- ✅ **Stale data detection and alerts** (v0.4.0)
+- âœ… **Stale data detection and alerts** (v0.4.0)
   - Visual indicators for stale data (red timestamp)
   - Footer warnings for API errors and stale data
   - Configurable thresholds for holdings (25h) and prices (65m)
   - On-startup sync if holdings >24 hours old
 
-- ✅ **Health notifications** (v0.4.0)
+- âœ… **Health notifications** (v0.4.0)
   - Severity-based footer warnings (warning/error/critical)
   - Specific messages for invalid symbols, rate limits, stale data
   - Enhanced error categorization and tracking
   - Footer only displays when warnings exist
 
-## ✅ Phase 3.1 - Multi-Asset Support (Complete)
+## âœ… Phase 3.1 - Multi-Asset Support (Complete)
 
 **Status**: Released in v0.5.0
 
 Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 
-- ✅ **Provider Architecture Refactor**
+- âœ… **Provider Architecture Refactor**
   - Base provider class with shared utilities
   - Coinbase provider extracted from node_helper
   - Factory functions for provider creation and routing
   - Provider-specific retry strategies
 
-- ✅ **Twelve Data Integration**
+- âœ… **Twelve Data Integration**
   - Encrypted credential storage (`setup-twelvedata.js`)
   - Stocks, ETFs, mutual funds via `/quote` endpoint
   - Forex rates via `/quote` endpoint (with 24h change)
   - Credit tracking via response headers
 
-- ✅ **Asset Type Support**
+- âœ… **Asset Type Support**
   - Types: `crypto`, `stock`, `etf`, `mutual_fund`, `forex`
   - Automatic routing to appropriate provider
   - Merge key: `symbol:type` to prevent conflicts
 
-- ✅ **Separate Update Intervals**
+- âœ… **Separate Update Intervals**
   - Crypto: 5 minutes (`cryptoPriceUpdateInterval`)
   - Stocks/ETFs/Forex: 20 minutes (`stockPriceUpdateInterval`)
   - Stays within Twelve Data free tier (800 calls/day)
 
-- ✅ **Frontend Enhancements**
+- âœ… **Frontend Enhancements**
   - Price per unit column (`showPricePerUnit` config)
   - Forex display section with 24h change (`showForex` config)
   - Automatic inverse forex pair generation
@@ -91,7 +91,7 @@ Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 }
 ```
 
-## 📋 Phase 3.2 - Brokerage Integration
+## ðŸ“‹ Phase 3.2 - Brokerage Integration
 
 **Status**: Planning
 
@@ -104,7 +104,7 @@ Automatic ingestion of brokerage account holdings via Plaid.
 - [ ] Position quantity tracking
 - [ ] Secure token storage
 
-## 📋 Phase 3.3 - Cost Basis & Gain/Loss Tracking
+## ðŸ“‹ Phase 3.3 - Cost Basis & Gain/Loss Tracking
 
 **Status**: Planning (after Phase 3.2)
 
@@ -113,10 +113,10 @@ Add cost basis tracking and unrealized gain/loss display.
 **Data Source Analysis**:
 | Source | Cost Basis Available? | Notes |
 |--------|----------------------|-------|
-| Coinbase | ✅ Yes | Portfolio Breakdown API has `cost_basis` and `average_entry_price` |
-| Twelve Data | ❌ No | Market data only, not portfolio tracking |
-| Plaid | ⚠️ TBD | May provide cost basis from connected brokerages |
-| Manual | ⚠️ User-provided | Add `costBasis` field to manual-holdings.json |
+| Coinbase | âœ… Yes | Portfolio Breakdown API has `cost_basis` and `average_entry_price` |
+| Twelve Data | âŒ No | Market data only, not portfolio tracking |
+| Plaid | âš ï¸ TBD | May provide cost basis from connected brokerages |
+| Manual | âš ï¸ User-provided | Add `costBasis` field to manual-holdings.json |
 
 **Implementation Tasks**:
 - [ ] Fetch cost basis from Coinbase Portfolio Breakdown API
@@ -127,7 +127,7 @@ Add cost basis tracking and unrealized gain/loss display.
 - [ ] Add total gain/loss to portfolio summary
 - [ ] Color coding for gains (green) and losses (red)
 
-## 📋 Phase 4 - Portfolio Performance Charts
+## ðŸ“‹ Phase 4 - Portfolio Performance Charts
 
 **Status**: Planning
 
@@ -190,7 +190,7 @@ Add visual performance charts for portfolio tracking over time.
 - [ ] Fetch historical prices from Twelve Data `/time_series`
 - [ ] Add config options and toggle
 
-## 🔮 Future Enhancements
+## ðŸ”® Future Enhancements
 
 Features under consideration for future phases:
 
@@ -230,3 +230,6 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 - **v0.3.0** (2025-12-27) - Phase 2: Retry logic with exponential backoff
 - **v0.2.0** (2025-12-26) - Phase 1: Coinbase PoC complete
 - **v0.1.0** (2025-12-26) - Initial module skeleton
+
+## Developer Tooling
+- Patch workflow documented (DEV.md) and LF enforcement added (.gitattributes).

@@ -1,6 +1,6 @@
 # MMM-Fintech
 
-A MagicMirror² module for displaying consolidated financial holdings with real-time pricing.
+A MagicMirrorÂ² module for displaying consolidated financial holdings with real-time pricing.
 
 ## Features
 
@@ -136,7 +136,7 @@ Add to your `config/config.js`:
 | `title` | `"Portfolio"` | Header text |
 | `fontSize` | `100` | Font size as percentage (e.g., 80 for smaller, 120 for larger) |
 | `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
-| `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
+| `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, â‚¬, Â£) or `"code"` (USD, EUR) |
 | `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
 | `stockPriceUpdateInterval` | `1200000` | Stock/forex price refresh (20 min) |
 | `showLastUpdated` | `true` | Show last sync timestamp |
@@ -333,3 +333,7 @@ See [ROADMAP.md](ROADMAP.md) for planned features and development phases.
 ## License
 
 MIT
+
+## Developer Workflow
+
+For development on Windows and testing on Raspberry Pi, see DEV.md.

@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+- chore(dev): document patch workflow and add .gitattributes for LF docs
+
+# Changelog
+
 All notable changes to MMM-Fintech are documented in this file.
 
 ## [0.5.0] - 2025-01-05
@@ -17,7 +22,7 @@ All notable changes to MMM-Fintech are documented in this file.
 - **Twelve Data Integration**: Support for traditional financial assets
   - Stocks, ETFs, mutual funds pricing via `/quote` endpoint
   - Forex rates via `/quote` endpoint (with 24h change)
-  - Automatic inverse forex pair generation (USD/PHP → PHP/USD)
+  - Automatic inverse forex pair generation (USD/PHP â†’ PHP/USD)
   - Credit tracking via response headers
   - Encrypted credential storage (`setup-twelvedata.js`)
 - **Separate Update Intervals**: Different frequencies by asset class
@@ -46,7 +51,7 @@ All notable changes to MMM-Fintech are documented in this file.
   - Fetches conversion rate from Twelve Data automatically
   - Supported: USD, EUR, GBP, JPY, CNY, PHP, CAD, AUD, CHF, INR, KRW, MXN, BRL, SGD, HKD
 - **Currency Style**: Choose symbol or code display
-  - `currencyStyle` config option: "symbol" ($, €, £) or "code" (USD, EUR, GBP)
+  - `currencyStyle` config option: "symbol" ($, â‚¬, Â£) or "code" (USD, EUR, GBP)
 - **Crypto as Forex**: Display crypto prices in exchange rates section
   - `cryptoAsForex` config option (array of symbols, e.g., `["BTC", "ETH"]`)
   - Excludes specified crypto from holdings table and total value
@@ -102,7 +107,7 @@ All notable changes to MMM-Fintech are documented in this file.
 
 ### Changed
 - Holdings sync schedule moved from 4:00am to 7:45am (configurable)
-- Footer warnings now use bullet separator (•) for multiple messages
+- Footer warnings now use bullet separator (â€¢) for multiple messages
 - Error logging includes specific categories: INVALID_SYMBOL, RATE_LIMIT, PRICE_FETCH, PRICE_UPDATE
 - Cache now includes `invalidSymbols` and `rateLimitedSymbols` arrays
 
@@ -137,7 +142,7 @@ All notable changes to MMM-Fintech are documented in this file.
 ## [0.2.0] - 2025-12-26
 
 ### Added
-- **Error Handling**: Warning indicator (⚠) in header when errors occur (1a3945d)
+- **Error Handling**: Warning indicator (âš ) in header when errors occur (1a3945d)
 - **Improved Logging**: Categorized error messages with details for troubleshooting (1a3945d)
 - **Scheduled Holdings Sync**: Automatic sync at 4am local time (9282a12)
 - **Configurable Price Updates**: Default 5-minute interval via `priceUpdateInterval` (9282a12)

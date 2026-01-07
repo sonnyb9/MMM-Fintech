@@ -1,6 +1,6 @@
-# Development Workflow (Windows → GitHub → Raspberry Pi)
+# Development Workflow (Windows â†’ GitHub â†’ Raspberry Pi)
 
-This project is developed on Windows and tested on Windows, then deployed to a Raspberry Pi running MagicMirror².
+This project is developed on Windows and tested on Windows, then deployed to a Raspberry Pi running MagicMirrorÂ².
 
 ## Goals
 
@@ -39,7 +39,7 @@ git commit -m "chore(dev): apply step"
 git push -u origin feature/snaptrade
 ```
 
-## Testing on Raspberry Pi (pull → restart → logs)
+## Testing on Raspberry Pi (pull â†’ restart â†’ logs)
 
 ```bash
 cd ~/MagicMirror/modules/MMM-Fintech
@@ -64,3 +64,38 @@ These files are intentionally machine-local and should remain gitignored:
 - `twelvedata-credentials.enc`
 - `cache.json`
 - `~/.mmm-fintech-key`
+
+## Patches Folder Convention
+
+Store patch files in:
+
+- `./patches/`
+
+Naming convention:
+
+- `0001-add-dev-md.patch`
+- `0002-patch-workflow-hygiene.patch`
+- `0003-snaptrade-skeleton.patch`
+
+## Patch Hygiene
+
+- Prefer Git to generate patch files (avoid PowerShell encoding issues).
+- Validate before applying: `git apply --check`.
+- Notepad++ (if used): UTF-8 (no BOM) + Unix (LF).
+
+## Create Patch Files (Windows PowerShell)
+
+```powershell
+git diff --staged --no-color --output=patches\000X-some-step.patch
+```
+
+Validate a patch against already-staged changes:
+
+```powershell
+git apply --check --reverse .\patches\000X-some-step.patch
+```
+
+## Runtime Baseline (Pi)
+
+- Node: v22.21.0
+- pm2: v6.0.8
