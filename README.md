@@ -337,3 +337,8 @@ MIT
 ## Developer Workflow
 
 For development on Windows and testing on Raspberry Pi, see DEV.md.
+
+## SnapTrade (Work in progress)
+
+SnapTrade integration is being added to support brokerage position sync.
+

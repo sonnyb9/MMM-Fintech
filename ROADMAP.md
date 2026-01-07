@@ -233,3 +233,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Developer Tooling
 - Patch workflow documented (DEV.md) and LF enforcement added (.gitattributes).
+
+## Integrations (Planned / WIP)
+- SnapTrade: brokerage connection + position sync (WIP)
+
