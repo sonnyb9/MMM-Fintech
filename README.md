@@ -342,3 +342,12 @@ For development on Windows and testing on Raspberry Pi, see DEV.md.
 
 SnapTrade integration is being added to support brokerage position sync.
 
+
+### SnapTrade setup (WIP)
+
+Run the setup helper to enter credentials (storage/encryption is added in a later step):
+
+```powershell
+node .\setup-snaptrade.js
+```
+
