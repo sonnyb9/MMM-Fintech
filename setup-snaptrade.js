@@ -28,15 +28,29 @@ function parseArgs(argv) {
 
 function loadOrCreateKey() {
   if (fs.existsSync(KEY_PATH)) {
-    const raw = fs.readFileSync(KEY_PATH, "utf8").trim();
-    const key = Buffer.from(raw, "base64");
-    if (key.length !== 32) {
-      throw new Error(`Invalid key in ${KEY_PATH}. Expected base64-encoded 32 bytes (AES-256).`);
+    const rawBuf = fs.readFileSync(KEY_PATH);
+    const rawStr = rawBuf.toString("utf8").trim();
+
+    if (/^[0-9a-fA-F]{64}$/.test(rawStr)) {
+      return Buffer.from(rawStr, "hex");
     }
-    return key;
+
+    try {
+      const b64 = Buffer.from(rawStr, "base64");
+      if (b64.length === 32) return b64;
+    } catch (_) {}
+
+    if (rawBuf.length === 32) {
+      return rawBuf;
+    }
+
+    throw new Error(
+      `Invalid key in ${KEY_PATH}. Expected 32 bytes as 64-hex, base64, or raw bytes. Found ${rawStr.length} chars / ${rawBuf.length} bytes.`
+    );
   }
+
   const key = crypto.randomBytes(32);
-  fs.writeFileSync(KEY_PATH, key.toString("base64") + "\n", { encoding: "utf8", mode: 0o600 });
+  fs.writeFileSync(KEY_PATH, key.toString("hex") + "\n", { encoding: "utf8", mode: 0o600 });
   return key;
 }
 

@@ -83,6 +83,9 @@ The goal is to minimize API usage, reduce failure modes, and present a stable da
 ```
 ~/.mmm-fintech-key          # 64-char hex encryption key (chmod 600)
 MMM-Fintech/cdp-credentials.enc  # AES-256-GCM encrypted credentials
+- The key file is shared across providers
+- Key may be stored as hex/base64/raw and is parsed accordingly
+- SnapTrade adds snaptrade-credentials.enc written by setup-snaptrade.js
 ```
 
 ### 4.2 Encryption Details
