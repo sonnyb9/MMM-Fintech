@@ -351,3 +351,4 @@ Run the setup helper to enter credentials (storage/encryption is added in a late
 node .\setup-snaptrade.js
 ```
 
+The setup script creates an encrypted credentials file (snaptrade-credentials.enc) in the module directory using AES-256-GCM. The encryption key is stored at ~/.mmm-fintech-key (copy this file to the same path on your Raspberry Pi).

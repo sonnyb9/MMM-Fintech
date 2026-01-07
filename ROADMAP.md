@@ -236,4 +236,4 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Integrations (Planned / WIP)
 - SnapTrade: brokerage connection + position sync (WIP)
-
+- [x] SnapTrade: encrypted credentials setup helper (setup-snaptrade.js)

@@ -1,7 +1,8 @@
-﻿# Changelog
+# Changelog
 
 ## Unreleased
 - feat: snaptrade provider stub (not yet wired)
+- feat: add SnapTrade encrypted credential setup helper (setup-snaptrade.js)
 - chore(dev): document patch workflow and add .gitattributes for LF docs
 
 # Changelog

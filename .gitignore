@@ -10,3 +10,6 @@ test-coinbase.js
 test-twelvedata.js
 manual-holdings.json
 AI-CONTEXT.md
+
+# SnapTrade
+snaptrade-credentials.enc
