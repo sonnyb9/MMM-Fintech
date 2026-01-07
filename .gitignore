@@ -13,3 +13,6 @@ AI-CONTEXT.md
 
 # SnapTrade
 snaptrade-credentials.enc
+
+# Local patch artifacts
+*.patch

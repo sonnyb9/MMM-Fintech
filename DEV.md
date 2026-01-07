@@ -99,3 +99,8 @@ git apply --check --reverse .\patches\000X-some-step.patch
 
 - Node: v22.21.0
 - pm2: v6.0.8
+
+## Patch file policy
+
+- Patch files are local-only artifacts and should not be committed.
+- `*.patch` is ignored to prevent accidental commits.
