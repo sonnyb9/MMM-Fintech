@@ -13,6 +13,11 @@ AI-CONTEXT.md
 
 # SnapTrade
 snaptrade-credentials.enc
+snaptrade-debug-accounts.js
+snaptrade-connect.js
+test-snaptrade.js
+test-snaptrade-provider.js
+test-full-sync.js
 
 # Local patch artifacts
 *.patch
