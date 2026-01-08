@@ -1,10 +1,11 @@
 {
   "name": "mmm-fintech",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "MagicMirror² module for consolidated financial holdings (crypto and brokerage)",
   "author": "sonnyb9",
   "license": "MIT",
   "dependencies": {
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "snaptrade-typescript-sdk": "^9.0.158"
   }
 }

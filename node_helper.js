@@ -58,7 +58,7 @@ module.exports = NodeHelper.create({
       this.providers.coinbase = coinbase;
       this.log("Coinbase provider initialized");
     } else {
-      this.logError("INIT", "Failed to initialize Coinbase provider");
+      this.log("Coinbase provider not configured (optional)");
     }
 
     var twelvedata = providers.createProvider("twelvedata");
@@ -69,7 +69,15 @@ module.exports = NodeHelper.create({
       this.log("TwelveData provider not configured (optional)");
     }
 
-    if (!this.providers.coinbase && !this.providers.twelvedata) {
+    var snaptrade = providers.createProvider("snaptrade");
+    if (snaptrade.init(this.config, this.path)) {
+      this.providers.snaptrade = snaptrade;
+      this.log("SnapTrade provider initialized");
+    } else {
+      this.log("SnapTrade provider not configured (optional)");
+    }
+
+    if (!this.providers.coinbase && !this.providers.twelvedata && !this.providers.snaptrade) {
       this.logError("INIT", "No providers initialized");
       this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
     }
@@ -543,7 +551,17 @@ module.exports = NodeHelper.create({
 
       var apiHoldings = [];
 
-      if (this.providers.coinbase) {
+      if (this.providers.snaptrade) {
+        try {
+          var snaptradeHoldings = await this.providers.snaptrade.fetchHoldings();
+          apiHoldings = apiHoldings.concat(snaptradeHoldings);
+          this.log("Fetched " + snaptradeHoldings.length + " holdings from SnapTrade");
+        } catch (error) {
+          this.logError("SNAPTRADE", "Failed to fetch holdings", error.message);
+        }
+      }
+
+      if (this.providers.coinbase && !this.providers.snaptrade) {
         try {
           var coinbaseHoldings = await this.providers.coinbase.fetchHoldings();
           apiHoldings = apiHoldings.concat(coinbaseHoldings);
