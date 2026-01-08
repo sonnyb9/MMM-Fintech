@@ -2,6 +2,24 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.7.0] - 2026-01-08
+
+### Added
+- **Cost Basis & Gain/Loss Tracking**: Display unrealized gains/losses for holdings
+  - Extracts `average_purchase_price` and `open_pnl` from SnapTrade
+  - Calculates gain/loss percentage per holding
+  - Shows total portfolio gain/loss percentage
+  - New `showGainLoss` config option (default: true)
+  - Supports `costBasis` field in manual-holdings.json
+- **G/L Column**: New column in holdings table showing gain/loss percentage
+  - Green for gains, red for losses
+  - Dash (—) displayed when cost basis unavailable
+  - Total row shows overall portfolio gain/loss
+
+### Changed
+- Holdings merge function now preserves cost basis data when aggregating
+- Price updates recalculate gain/loss percentages
+
 ## [0.6.0] - 2026-01-07
 
 ### Added

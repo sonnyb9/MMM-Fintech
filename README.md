@@ -2,6 +2,8 @@
 
 A MagicMirror² module for displaying consolidated financial holdings with real-time pricing.
 
+> **Note**: This module is a work in progress. Features and APIs may change.
+
 ## Features
 
 - **Multi-Asset Support**: Crypto, stocks, ETFs, mutual funds, and forex
@@ -9,6 +11,7 @@ A MagicMirror² module for displaying consolidated financial holdings with real-
 - **Coinbase Integration**: Fetches crypto holdings via CDP API
 - **Twelve Data Integration**: Stocks, ETFs, mutual funds, and forex pricing
 - **Manual Holdings**: Support for manual entry without any API registrations
+- **Cost Basis & Gain/Loss**: Display unrealized gain/loss percentages
 - **Real-time Pricing**: Configurable update intervals by asset type
 - **Market Hours Scheduling**: Limit stock/forex polling to market hours
 - **24h Change**: Shows percent change for each holding
@@ -229,6 +232,7 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 | `showLastUpdated` | `true` | Show last sync timestamp |
 | `showPricePerUnit` | `true` | Show price column |
 | `showQuantity` | `true` | Show quantity, value columns, and total row |
+| `showGainLoss` | `true` | Show gain/loss percentage column (requires SnapTrade or manual costBasis) |
 | `showForex` | `true` | Show forex rates section |
 | `showInverseForex` | `true` | Show inverse rate column in forex section |
 | `cryptoAsForex` | `[]` | Crypto symbols to show as forex rates (e.g., `["BTC", "ETH"]`) |

@@ -104,27 +104,17 @@ Automatic ingestion of brokerage account holdings via SnapTrade.
 
 **Key Discovery**: SnapTrade via Coinbase returns complete holdings including staked crypto (SOL, ETH), solving the CDP API limitation.
 
-## 📋 Phase 3.3 - Cost Basis & Gain/Loss Tracking
+## ✅ Phase 3.3 - Cost Basis & Gain/Loss Tracking (Complete)
 
-**Status**: Planning
+**Status**: Released in v0.7.0
 
 Add cost basis tracking and unrealized gain/loss display.
 
-**Data Source Analysis**:
-| Source | Cost Basis Available? | Notes |
-|--------|----------------------|-------|
-| SnapTrade | ✅ Yes | Returns `average_purchase_price` and `open_pnl` |
-| Coinbase CDP | ✅ Yes | Portfolio Breakdown API has `cost_basis` |
-| Twelve Data | ❌ No | Market data only, not portfolio tracking |
-| Manual | ⚠️ User-provided | Add `costBasis` field to manual-holdings.json |
-
-**Implementation Tasks**:
-- [ ] Extract cost basis from SnapTrade `average_purchase_price`
-- [ ] Calculate unrealized gain/loss from SnapTrade `open_pnl`
-- [ ] Add `costBasis` field to manual holdings structure
-- [ ] Add gain/loss column to holdings table
-- [ ] Add total gain/loss to portfolio summary
-- [ ] Color coding for gains (green) and losses (red)
+- ✅ **SnapTrade Cost Basis**: Extract from `average_purchase_price` and `open_pnl`
+- ✅ **Gain/Loss Calculation**: Per-holding and total portfolio percentages
+- ✅ **Manual Holdings Support**: Optional `costBasis` field in manual-holdings.json
+- ✅ **G/L Column**: New column with green/red coloring
+- ✅ **Config Option**: `showGainLoss` (default: true)
 
 ## 📋 Phase 4 - Portfolio Performance Charts
 
@@ -223,6 +213,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
+- **v0.7.0** (2026-01-08) - Phase 3.3 complete: Cost basis and gain/loss tracking
 - **v0.6.0** (2026-01-07) - Phase 3.2 complete: SnapTrade integration for brokerage holdings
 - **v0.5.0** (2025-01-05) - Phase 3.1 complete: Multi-asset support, Twelve Data integration, market hours
 - **v0.4.0** (2025-12-29) - Phase 2 complete: Stale data detection, health notifications
