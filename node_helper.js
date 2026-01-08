@@ -419,15 +419,26 @@ module.exports = NodeHelper.create({
       var type = holding.type || "crypto";
       var mergeKey = symbol + ":" + type;
 
+      var quantity = holding.quantity || 0;
+      var costBasis = holding.costBasis || 0;
+      var openPnl = holding.openPnl || 0;
+
       if (merged[mergeKey]) {
-        merged[mergeKey].quantity += holding.quantity;
-        merged[mergeKey].sources = merged[mergeKey].sources.concat(sources);
+        var existing = merged[mergeKey];
+        var totalCostBasis = existing.costBasis + costBasis;
+        var totalQuantity = existing.quantity + quantity;
+        existing.quantity = totalQuantity;
+        existing.costBasis = totalCostBasis;
+        existing.openPnl = (existing.openPnl || 0) + openPnl;
+        existing.sources = existing.sources.concat(sources);
       } else {
         merged[mergeKey] = {
           symbol: symbol,
-          quantity: holding.quantity,
+          quantity: quantity,
           type: type,
-          sources: sources.slice()
+          sources: sources.slice(),
+          costBasis: costBasis,
+          openPnl: openPnl
         };
       }
     }
@@ -630,13 +641,27 @@ module.exports = NodeHelper.create({
       var cryptoForex = this.buildCryptoForex(allHoldings);
 
       var totalValue = 0;
+      var totalCostBasis = 0;
       var cryptoAsForex = this.config.cryptoAsForex || [];
       for (var j = 0; j < allHoldings.length; j++) {
         var h = allHoldings[j];
+
+        if (h.costBasis > 0 && h.value > 0) {
+          h.gainLossPercent = ((h.value - h.costBasis) / h.costBasis) * 100;
+        } else {
+          h.gainLossPercent = null;
+        }
+
         if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
           continue;
         }
         totalValue += h.value;
+        totalCostBasis += h.costBasis || 0;
+      }
+
+      var totalGainLossPercent = null;
+      if (totalCostBasis > 0) {
+        totalGainLossPercent = ((totalValue - totalCostBasis) / totalCostBasis) * 100;
       }
 
       var cache = {
@@ -644,6 +669,8 @@ module.exports = NodeHelper.create({
         forex: forexRates,
         cryptoForex: cryptoForex,
         totalValue: totalValue,
+        totalCostBasis: totalCostBasis,
+        totalGainLossPercent: totalGainLossPercent,
         conversionRate: this.conversionRate,
         currency: this.config.currency || "USD",
         lastUpdated: new Date().toISOString(),
@@ -752,16 +779,32 @@ module.exports = NodeHelper.create({
       cache.cryptoForex = this.buildCryptoForex(cache.holdings);
 
       var totalValue = 0;
+      var totalCostBasis = 0;
       var cryptoAsForex = this.config.cryptoAsForex || [];
       for (var j = 0; j < cache.holdings.length; j++) {
         var h = cache.holdings[j];
+
+        if (h.costBasis > 0 && h.value > 0) {
+          h.gainLossPercent = ((h.value - h.costBasis) / h.costBasis) * 100;
+        } else {
+          h.gainLossPercent = null;
+        }
+
         if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
           continue;
         }
         totalValue += h.value;
+        totalCostBasis += h.costBasis || 0;
+      }
+
+      var totalGainLossPercent = null;
+      if (totalCostBasis > 0) {
+        totalGainLossPercent = ((totalValue - totalCostBasis) / totalCostBasis) * 100;
       }
 
       cache.totalValue = totalValue;
+      cache.totalCostBasis = totalCostBasis;
+      cache.totalGainLossPercent = totalGainLossPercent;
       cache.conversionRate = this.conversionRate;
       cache.currency = this.config.currency || "USD";
       cache.lastPriceUpdate = new Date().toISOString();

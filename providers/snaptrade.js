@@ -165,10 +165,20 @@ class SnapTradeProvider {
         var source = "snaptrade-" + institution.toLowerCase();
         var price = pos.price || 0;
 
+        var avgPurchasePrice = pos.average_purchase_price || 0;
+        var openPnl = pos.open_pnl || 0;
+        var costBasis = avgPurchasePrice * units;
+
         var key = normalizedSymbol + ":" + assetType + ":" + source;
 
         if (holdingsMap[key]) {
-          holdingsMap[key].quantity += units;
+          var existing = holdingsMap[key];
+          var totalCostBasis = existing.costBasis + costBasis;
+          var totalUnits = existing.quantity + units;
+          existing.quantity = totalUnits;
+          existing.costBasis = totalCostBasis;
+          existing.openPnl += openPnl;
+          existing.avgPurchasePrice = totalUnits > 0 ? totalCostBasis / totalUnits : 0;
         } else {
           holdingsMap[key] = {
             symbol: normalizedSymbol,
@@ -177,6 +187,9 @@ class SnapTradeProvider {
             price: price,
             source: source,
             accountName: accountName,
+            costBasis: costBasis,
+            avgPurchasePrice: avgPurchasePrice,
+            openPnl: openPnl,
           };
         }
       }
@@ -185,7 +198,13 @@ class SnapTradeProvider {
     var holdings = [];
     for (var k in holdingsMap) {
       if (holdingsMap.hasOwnProperty(k)) {
-        holdings.push(holdingsMap[k]);
+        var h = holdingsMap[k];
+        if (h.costBasis > 0) {
+          h.gainLossPercent = ((h.quantity * h.price) - h.costBasis) / h.costBasis * 100;
+        } else {
+          h.gainLossPercent = 0;
+        }
+        holdings.push(h);
       }
     }
 

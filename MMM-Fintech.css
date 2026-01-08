@@ -61,6 +61,34 @@
   color: #f55;
 }
 
+.mmm-fintech-gainloss {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-gainloss.positive {
+  color: #5f5;
+}
+
+.mmm-fintech-gainloss.negative {
+  color: #f55;
+}
+
+.mmm-fintech-total-gainloss {
+  text-align: right;
+  font-family: monospace;
+  padding-left: 15px;
+}
+
+.mmm-fintech-total-gainloss.positive {
+  color: #5f5;
+}
+
+.mmm-fintech-total-gainloss.negative {
+  color: #f55;
+}
+
 .mmm-fintech-total-row {
   border-top: 1px solid rgba(255, 255, 255, 0.3);
 }

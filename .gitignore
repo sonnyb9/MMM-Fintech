@@ -18,6 +18,7 @@ snaptrade-connect.js
 test-snaptrade.js
 test-snaptrade-provider.js
 test-full-sync.js
+test-costbasis.js
 
 # Local patch artifacts
 *.patch

@@ -5,6 +5,7 @@ Module.register("MMM-Fintech", {
     showLastUpdated: true,
     showPricePerUnit: true,
     showQuantity: true,
+    showGainLoss: true,
     showForex: true,
     showInverseForex: true,
     cryptoAsForex: [],
@@ -75,6 +76,8 @@ Module.register("MMM-Fintech", {
     this.forex = [];
     this.cryptoForex = [];
     this.totalValue = 0;
+    this.totalCostBasis = 0;
+    this.totalGainLossPercent = null;
     this.lastUpdated = null;
     this.lastPriceUpdate = null;
     this.hasError = false;
@@ -99,6 +102,7 @@ Module.register("MMM-Fintech", {
     var count = 2;
     if (this.config.showQuantity) count += 2;
     if (this.config.showPricePerUnit) count += 1;
+    if (this.config.showGainLoss) count += 1;
     return count;
   },
 
@@ -204,6 +208,9 @@ Module.register("MMM-Fintech", {
       headerHtml += "<th class='mmm-fintech-value-header'>Value</th>";
     }
     headerHtml += "<th class='mmm-fintech-change-header'>24h</th>";
+    if (this.config.showGainLoss) {
+      headerHtml += "<th class='mmm-fintech-gainloss-header'>G/L</th>";
+    }
     headerRow.innerHTML = headerHtml;
     table.appendChild(headerRow);
 
@@ -252,6 +259,25 @@ Module.register("MMM-Fintech", {
       }
       row.appendChild(changeCell);
 
+      if (this.config.showGainLoss) {
+        var gainLossCell = document.createElement("td");
+        gainLossCell.className = "mmm-fintech-gainloss";
+        if (h.gainLossPercent !== null && h.gainLossPercent !== undefined) {
+          if (h.gainLossPercent > 0) {
+            gainLossCell.classList.add("positive");
+            gainLossCell.innerHTML = "+" + h.gainLossPercent.toFixed(2) + "%";
+          } else if (h.gainLossPercent < 0) {
+            gainLossCell.classList.add("negative");
+            gainLossCell.innerHTML = h.gainLossPercent.toFixed(2) + "%";
+          } else {
+            gainLossCell.innerHTML = "0.00%";
+          }
+        } else {
+          gainLossCell.innerHTML = "—";
+        }
+        row.appendChild(gainLossCell);
+      }
+
       table.appendChild(row);
     }
   },
@@ -282,6 +308,25 @@ Module.register("MMM-Fintech", {
 
     var emptyChange = document.createElement("td");
     row.appendChild(emptyChange);
+
+    if (this.config.showGainLoss) {
+      var totalGainLossCell = document.createElement("td");
+      totalGainLossCell.className = "mmm-fintech-total-gainloss";
+      if (this.totalGainLossPercent !== null && this.totalGainLossPercent !== undefined) {
+        if (this.totalGainLossPercent > 0) {
+          totalGainLossCell.classList.add("positive");
+          totalGainLossCell.innerHTML = "+" + this.totalGainLossPercent.toFixed(2) + "%";
+        } else if (this.totalGainLossPercent < 0) {
+          totalGainLossCell.classList.add("negative");
+          totalGainLossCell.innerHTML = this.totalGainLossPercent.toFixed(2) + "%";
+        } else {
+          totalGainLossCell.innerHTML = "0.00%";
+        }
+      } else {
+        totalGainLossCell.innerHTML = "";
+      }
+      row.appendChild(totalGainLossCell);
+    }
 
     table.appendChild(row);
   },
@@ -314,6 +359,9 @@ Module.register("MMM-Fintech", {
     }
     headerHtml += "<th class='mmm-fintech-forex-rate-header'>Rate</th>";
     headerHtml += "<th class='mmm-fintech-forex-change-header'>24h</th>";
+    if (this.config.showGainLoss) {
+      headerHtml += "<th></th>";
+    }
     headerRow.innerHTML = headerHtml;
     table.appendChild(headerRow);
 
@@ -358,6 +406,11 @@ Module.register("MMM-Fintech", {
         changeCell.innerHTML = "0.00%";
       }
       row.appendChild(changeCell);
+
+      if (this.config.showGainLoss) {
+        var emptyGainLoss = document.createElement("td");
+        row.appendChild(emptyGainLoss);
+      }
 
       table.appendChild(row);
     }
@@ -485,6 +538,8 @@ Module.register("MMM-Fintech", {
       this.forex = payload.forex || [];
       this.cryptoForex = payload.cryptoForex || [];
       this.totalValue = payload.totalValue || 0;
+      this.totalCostBasis = payload.totalCostBasis || 0;
+      this.totalGainLossPercent = payload.totalGainLossPercent;
       this.lastUpdated = payload.lastUpdated || null;
       this.lastPriceUpdate = payload.lastPriceUpdate || null;
       this.hasError = payload.hasError || false;
