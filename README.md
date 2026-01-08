@@ -116,7 +116,7 @@ Enter your clientId and consumerKey when prompted. Then generate a connection po
 node snaptrade-connect.js
 ```
 
-Open the URL in a browser to connect your brokerage accounts (Fidelity, Coinbase, etc.).
+Open the URL in a browser to connect your brokerage accounts (Fidelity, Coinbase, etc.). **Note**: The connection portal URL expires in 5 minutes—run the command again if it expires before you complete the connection.
 
 ### 2. Set Up Coinbase CDP API (Alternative to SnapTrade for Crypto)
 
