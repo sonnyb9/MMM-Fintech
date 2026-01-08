@@ -1,8 +1,8 @@
 # MMM-Fintech Roadmap
 
-This document outlines the development roadmap for MMM-Fintech, a MagicMirrorÂ² module for displaying consolidated financial holdings.
+This document outlines the development roadmap for MMM-Fintech, a MagicMirror² module for displaying consolidated financial holdings.
 
-## âœ… Phase 1 - Coinbase PoC (Complete)
+## ✅ Phase 1 - Coinbase PoC (Complete)
 
 **Status**: Released in v0.2.0
 
@@ -19,115 +19,114 @@ Core functionality for cryptocurrency tracking via Coinbase CDP API.
 - Error handling with warning indicator
 - Retry logic with exponential backoff
 
-## âœ… Phase 2 - Hardening (Complete)
+## ✅ Phase 2 - Hardening (Complete)
 
 **Status**: Released in v0.4.0
 
 Improve reliability and user feedback for production use.
 
-- âœ… **Retry logic with exponential backoff** (v0.3.0)
+- ✅ **Retry logic with exponential backoff** (v0.3.0)
   - Configurable max retries (default: 6)
   - Exponential backoff: 2s, 4s, 8s, 16s, 32s, 64s
   - Applied to both holdings and price fetches
 
-- âœ… **Stale data detection and alerts** (v0.4.0)
+- ✅ **Stale data detection and alerts** (v0.4.0)
   - Visual indicators for stale data (red timestamp)
   - Footer warnings for API errors and stale data
   - Configurable thresholds for holdings (25h) and prices (65m)
   - On-startup sync if holdings >24 hours old
 
-- âœ… **Health notifications** (v0.4.0)
+- ✅ **Health notifications** (v0.4.0)
   - Severity-based footer warnings (warning/error/critical)
   - Specific messages for invalid symbols, rate limits, stale data
   - Enhanced error categorization and tracking
   - Footer only displays when warnings exist
 
-## âœ… Phase 3.1 - Multi-Asset Support (Complete)
+## ✅ Phase 3.1 - Multi-Asset Support (Complete)
 
 **Status**: Released in v0.5.0
 
 Expand beyond cryptocurrency to support stocks, ETFs, mutual funds, and forex.
 
-- âœ… **Provider Architecture Refactor**
+- ✅ **Provider Architecture Refactor**
   - Base provider class with shared utilities
   - Coinbase provider extracted from node_helper
   - Factory functions for provider creation and routing
   - Provider-specific retry strategies
 
-- âœ… **Twelve Data Integration**
+- ✅ **Twelve Data Integration**
   - Encrypted credential storage (`setup-twelvedata.js`)
   - Stocks, ETFs, mutual funds via `/quote` endpoint
   - Forex rates via `/quote` endpoint (with 24h change)
   - Credit tracking via response headers
 
-- âœ… **Asset Type Support**
+- ✅ **Asset Type Support**
   - Types: `crypto`, `stock`, `etf`, `mutual_fund`, `forex`
   - Automatic routing to appropriate provider
   - Merge key: `symbol:type` to prevent conflicts
 
-- âœ… **Separate Update Intervals**
+- ✅ **Separate Update Intervals**
   - Crypto: 5 minutes (`cryptoPriceUpdateInterval`)
   - Stocks/ETFs/Forex: 20 minutes (`stockPriceUpdateInterval`)
   - Stays within Twelve Data free tier (800 calls/day)
 
-- âœ… **Frontend Enhancements**
+- ✅ **Frontend Enhancements**
   - Price per unit column (`showPricePerUnit` config)
   - Forex display section with 24h change (`showForex` config)
   - Automatic inverse forex pair generation
   - Smart rate formatting based on magnitude
   - Default title changed to "Portfolio"
 
-**Manual Holdings Structure**:
-```json
-{
-  "holdings": [
-    {"symbol": "SOL", "quantity": 12.919, "type": "crypto", "source": "coinbase-staked"},
-    {"symbol": "AAPL", "quantity": 50, "type": "stock", "source": "fidelity"}
-  ],
-  "forex": [
-    {"pair": "USD/PHP"},
-    {"pair": "USD/EUR"}
-  ]
-}
-```
+## ✅ Phase 3.2 - Brokerage Integration (Complete)
 
-## ðŸ“‹ Phase 3.2 - Brokerage Integration
+**Status**: Released in v0.6.0
+
+Automatic ingestion of brokerage account holdings via SnapTrade.
+
+- ✅ **SnapTrade Integration**
+  - Official `snaptrade-typescript-sdk` for API access
+  - Encrypted credential storage (`setup-snaptrade.js`)
+  - Connection portal URL generator (`snaptrade-connect.js`)
+  - Fidelity account connection working
+  - Coinbase connection working (returns staked crypto!)
+
+- ✅ **SnapTrade Provider**
+  - Fetches holdings from all connected brokerages
+  - Position aggregation (staked + unstaked combined)
+  - Type code mapping: `crypto`, `cs`, `et`, `oef` → internal types
+  - Symbol normalization: `BRKB` → `BRK.B`
+  - Cash equivalent detection for money market funds
+
+- ✅ **Holdings Priority**
+  - SnapTrade (if configured) → Coinbase CDP (fallback) → Manual
+  - Coinbase CDP API now only used when SnapTrade not configured
+  - Manual holdings remain for users without API access
+
+**Key Discovery**: SnapTrade via Coinbase returns complete holdings including staked crypto (SOL, ETH), solving the CDP API limitation.
+
+## 📋 Phase 3.3 - Cost Basis & Gain/Loss Tracking
 
 **Status**: Planning
-
-Automatic ingestion of brokerage account holdings via Plaid.
-
-- [ ] Plaid Link integration
-- [ ] Fidelity account connection
-- [ ] Automatic holdings sync from brokerage
-- [ ] Support for multiple account types (brokerage, IRA, 401k)
-- [ ] Position quantity tracking
-- [ ] Secure token storage
-
-## ðŸ“‹ Phase 3.3 - Cost Basis & Gain/Loss Tracking
-
-**Status**: Planning (after Phase 3.2)
 
 Add cost basis tracking and unrealized gain/loss display.
 
 **Data Source Analysis**:
 | Source | Cost Basis Available? | Notes |
 |--------|----------------------|-------|
-| Coinbase | âœ… Yes | Portfolio Breakdown API has `cost_basis` and `average_entry_price` |
-| Twelve Data | âŒ No | Market data only, not portfolio tracking |
-| Plaid | âš ï¸ TBD | May provide cost basis from connected brokerages |
-| Manual | âš ï¸ User-provided | Add `costBasis` field to manual-holdings.json |
+| SnapTrade | ✅ Yes | Returns `average_purchase_price` and `open_pnl` |
+| Coinbase CDP | ✅ Yes | Portfolio Breakdown API has `cost_basis` |
+| Twelve Data | ❌ No | Market data only, not portfolio tracking |
+| Manual | ⚠️ User-provided | Add `costBasis` field to manual-holdings.json |
 
 **Implementation Tasks**:
-- [ ] Fetch cost basis from Coinbase Portfolio Breakdown API
+- [ ] Extract cost basis from SnapTrade `average_purchase_price`
+- [ ] Calculate unrealized gain/loss from SnapTrade `open_pnl`
 - [ ] Add `costBasis` field to manual holdings structure
-- [ ] Investigate Plaid cost basis availability
-- [ ] Calculate unrealized gain/loss (current value - cost basis)
 - [ ] Add gain/loss column to holdings table
 - [ ] Add total gain/loss to portfolio summary
 - [ ] Color coding for gains (green) and losses (red)
 
-## ðŸ“‹ Phase 4 - Portfolio Performance Charts
+## 📋 Phase 4 - Portfolio Performance Charts
 
 **Status**: Planning
 
@@ -190,7 +189,7 @@ Add visual performance charts for portfolio tracking over time.
 - [ ] Fetch historical prices from Twelve Data `/time_series`
 - [ ] Add config options and toggle
 
-## ðŸ”® Future Enhancements
+## 🔮 Future Enhancements
 
 Features under consideration for future phases:
 
@@ -213,7 +212,7 @@ Features under consideration for future phases:
 - Voice assistant integration
 
 ### Data Sources
-- Additional brokerage integrations (Vanguard, Schwab, etc.)
+- Additional brokerage integrations via SnapTrade (Vanguard, Schwab, etc.)
 - Bank account balances
 - Real estate valuations
 - Alternative investments (bonds, commodities)
@@ -224,17 +223,9 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
-- **v0.6.0** (2025-12-30) - Display enhancements: privacy mode, currency conversion, crypto as forex, percentage-based font size
-- **v0.5.0** (2025-12-29) - Phase 3.1 complete: Multi-asset support, Twelve Data integration, provider architecture
-- **v0.4.0** (2025-12-29) - Phase 2 complete: Stale data detection, health notifications, enhanced error handling
-- **v0.3.0** (2025-12-27) - Phase 2: Retry logic with exponential backoff
+- **v0.6.0** (2026-01-07) - Phase 3.2 complete: SnapTrade integration for brokerage holdings
+- **v0.5.0** (2025-01-05) - Phase 3.1 complete: Multi-asset support, Twelve Data integration, market hours
+- **v0.4.0** (2025-12-29) - Phase 2 complete: Stale data detection, health notifications
+- **v0.3.0** (2025-12-27) - Retry logic with exponential backoff
 - **v0.2.0** (2025-12-26) - Phase 1: Coinbase PoC complete
 - **v0.1.0** (2025-12-26) - Initial module skeleton
-
-## Developer Tooling
-- Patch workflow documented (DEV.md) and LF enforcement added (.gitattributes).
-
-## Integrations (Planned / WIP)
-- SnapTrade: brokerage connection + position sync (WIP)
-- [x] SnapTrade: encrypted credentials setup helper (setup-snaptrade.js)
-- [x] SnapTrade setup: reuse shared encryption key (~/.mmm-fintech-key)

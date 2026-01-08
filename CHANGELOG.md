@@ -1,14 +1,31 @@
 # Changelog
 
-## Unreleased
-- feat: snaptrade provider stub (not yet wired)
-- feat: add SnapTrade encrypted credential setup helper (setup-snaptrade.js)
-- chore(dev): document patch workflow and add .gitattributes for LF docs
-- fix(snaptrade): setup-snaptrade now accepts existing ~/.mmm-fintech-key formats (hex/base64/raw)
-
-# Changelog
-
 All notable changes to MMM-Fintech are documented in this file.
+
+## [0.6.0] - 2026-01-07
+
+### Added
+- **SnapTrade Integration**: Unified brokerage holdings via SnapTrade API
+  - Support for Fidelity, Coinbase, and other connected brokerages
+  - Returns complete holdings including staked crypto (SOL, ETH)
+  - Uses official `snaptrade-typescript-sdk`
+  - Encrypted credential storage (`setup-snaptrade.js`)
+  - Connection portal URL generator (`snaptrade-connect.js`)
+- **SnapTrade Provider**: Full provider implementation
+  - Position aggregation (handles staked + unstaked as single holding)
+  - Type code mapping: `crypto`, `cs`, `et`, `oef`, `cef` → internal types
+  - Symbol normalization: `BRKB` → `BRK.B`, `BRKA` → `BRK.A`
+  - Cash equivalent detection for money market funds
+
+### Changed
+- **Holdings fetch priority**: SnapTrade (if configured) → Coinbase CDP (fallback) → Manual
+- Coinbase CDP API now only used when SnapTrade is not configured
+- Manual holdings no longer needed for Fidelity positions or staked crypto
+- Coinbase provider initialization no longer required (optional)
+
+### Documentation
+- AI-CONTEXT.md rewritten for v0.6.0 with SnapTrade details
+- Removed patch workflow documentation (no longer used)
 
 ## [0.5.0] - 2025-01-05
 
@@ -25,7 +42,7 @@ All notable changes to MMM-Fintech are documented in this file.
 - **Twelve Data Integration**: Support for traditional financial assets
   - Stocks, ETFs, mutual funds pricing via `/quote` endpoint
   - Forex rates via `/quote` endpoint (with 24h change)
-  - Automatic inverse forex pair generation (USD/PHP Ã¢â€ â€™ PHP/USD)
+  - Automatic inverse forex pair generation (USD/PHP → PHP/USD)
   - Credit tracking via response headers
   - Encrypted credential storage (`setup-twelvedata.js`)
 - **Separate Update Intervals**: Different frequencies by asset class
@@ -54,7 +71,7 @@ All notable changes to MMM-Fintech are documented in this file.
   - Fetches conversion rate from Twelve Data automatically
   - Supported: USD, EUR, GBP, JPY, CNY, PHP, CAD, AUD, CHF, INR, KRW, MXN, BRL, SGD, HKD
 - **Currency Style**: Choose symbol or code display
-  - `currencyStyle` config option: "symbol" ($, Ã¢â€šÂ¬, Ã‚Â£) or "code" (USD, EUR, GBP)
+  - `currencyStyle` config option: "symbol" ($, €, £) or "code" (USD, EUR, GBP)
 - **Crypto as Forex**: Display crypto prices in exchange rates section
   - `cryptoAsForex` config option (array of symbols, e.g., `["BTC", "ETH"]`)
   - Excludes specified crypto from holdings table and total value
@@ -110,7 +127,7 @@ All notable changes to MMM-Fintech are documented in this file.
 
 ### Changed
 - Holdings sync schedule moved from 4:00am to 7:45am (configurable)
-- Footer warnings now use bullet separator (Ã¢â‚¬Â¢) for multiple messages
+- Footer warnings now use bullet separator (•) for multiple messages
 - Error logging includes specific categories: INVALID_SYMBOL, RATE_LIMIT, PRICE_FETCH, PRICE_UPDATE
 - Cache now includes `invalidSymbols` and `rateLimitedSymbols` arrays
 
@@ -145,7 +162,7 @@ All notable changes to MMM-Fintech are documented in this file.
 ## [0.2.0] - 2025-12-26
 
 ### Added
-- **Error Handling**: Warning indicator (Ã¢Å¡Â ) in header when errors occur (1a3945d)
+- **Error Handling**: Warning indicator (⚠) in header when errors occur (1a3945d)
 - **Improved Logging**: Categorized error messages with details for troubleshooting (1a3945d)
 - **Scheduled Holdings Sync**: Automatic sync at 4am local time (9282a12)
 - **Configurable Price Updates**: Default 5-minute interval via `priceUpdateInterval` (9282a12)
