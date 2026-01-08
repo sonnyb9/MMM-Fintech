@@ -1,13 +1,14 @@
 # MMM-Fintech
 
-A MagicMirrorÂ² module for displaying consolidated financial holdings with real-time pricing.
+A MagicMirror² module for displaying consolidated financial holdings with real-time pricing.
 
 ## Features
 
 - **Multi-Asset Support**: Crypto, stocks, ETFs, mutual funds, and forex
+- **SnapTrade Integration**: Fetches holdings from Fidelity, Coinbase, and other brokerages
 - **Coinbase Integration**: Fetches crypto holdings via CDP API
 - **Twelve Data Integration**: Stocks, ETFs, mutual funds, and forex pricing
-- **Manual Holdings**: Support for staked assets and brokerage positions
+- **Manual Holdings**: Support for manual entry without any API registrations
 - **Real-time Pricing**: Configurable update intervals by asset type
 - **Market Hours Scheduling**: Limit stock/forex polling to market hours
 - **24h Change**: Shows percent change for each holding
@@ -18,6 +19,77 @@ A MagicMirrorÂ² module for displaying consolidated financial holdings with rea
 - **Secure Credentials**: AES-256-GCM encrypted API keys
 - **Error Indicators**: Visual warnings when sync fails
 - **Configurable Sorting**: By value or alphabetically
+
+## Data Providers
+
+MMM-Fintech supports multiple ways to track your holdings, from fully manual to fully automated.
+
+### Manual Holdings (No API Required)
+
+**Purpose**: Track holdings without any API registrations or costs
+
+**Cost**: Free
+
+If you prefer not to register for any data provider APIs, you can manually enter your holdings in `manual-holdings.json`. This requires you to update the file yourself whenever your holdings change.
+
+**How it works**: You enter your holdings (symbol, quantity, type) in a JSON file. The module will still need Twelve Data (free tier) to fetch current prices, or you can use the `cash` type for money market funds which uses a fixed $1.00 price with no API calls.
+
+**Best for**: Users who want simplicity, don't want to share credentials with third-party services, or have holdings at brokerages not supported by SnapTrade.
+
+See [Manual Holdings Setup](#5-add-manual-holdings-optional) for the file format.
+
+---
+
+### SnapTrade (Recommended for Automated Brokerage Holdings)
+
+**Purpose**: Automatically fetches holdings from connected brokerage accounts (Fidelity, Coinbase, Schwab, etc.)
+
+**Cost**: Pay-as-you-go pricing. See [SnapTrade Pricing](https://snaptrade.com/pricing) for details.
+
+**Why use it**: SnapTrade provides unified access to multiple brokerages through a single API. When connected to Coinbase, it returns complete holdings including staked crypto (SOL, ETH) which the Coinbase CDP API cannot access. Holdings update automatically—no manual file editing required.
+
+**Get credentials**: 
+1. Create account at [SnapTrade Dashboard](https://dashboard.snaptrade.com/)
+2. Generate API key (clientId and consumerKey)
+3. See [SnapTrade Getting Started](https://docs.snaptrade.com/) for full setup
+
+### Coinbase CDP API (Free - Crypto Only)
+
+**Purpose**: Automatically fetches crypto holdings directly from Coinbase
+
+**Cost**: Free. See [Coinbase Developer Platform](https://www.coinbase.com/developer-platform)
+
+**Limitation**: The CDP API does not return staked crypto assets. If you have staked SOL, ETH, or other assets, they will not appear. Use SnapTrade (connected to Coinbase) or manual holdings instead to track staked assets.
+
+**Get credentials**:
+1. Go to [CDP Portal API Keys](https://portal.cdp.coinbase.com/projects/api-keys)
+2. Create a Secret API key with **View** permission
+3. Select **ECDSA** algorithm (required)
+4. Download the JSON file
+
+### Twelve Data (Free Tier - Pricing Only)
+
+**Purpose**: Provides real-time pricing for stocks, ETFs, mutual funds, and forex rates
+
+**Cost**: Free tier includes 8 API calls/minute (800/day). See [Twelve Data Pricing](https://twelvedata.com/pricing)
+
+**Note**: Twelve Data is a pricing provider only—it does not track holdings. Holdings come from SnapTrade, Coinbase, manual entry, or a combination. With the default 20-minute update interval during market hours, you'll use approximately 200 calls/day for 10 symbols, well within the free tier.
+
+**Get credentials**:
+1. Create account at [Twelve Data](https://twelvedata.com/)
+2. Copy your API key from the dashboard
+
+### Provider Priority
+
+When fetching holdings, the module uses this priority:
+1. **SnapTrade** (if configured) — Fetches from all connected brokerages
+2. **Coinbase CDP** (if SnapTrade not configured) — Fetches crypto only
+3. **Manual holdings** — Always merged for additional positions or as standalone
+
+For pricing:
+- **Crypto**: Coinbase CDP API
+- **Stocks/ETFs/Mutual Funds/Forex**: Twelve Data API
+- **Cash (money market)**: Fixed at $1.00 (no API calls)
 
 ## Installation
 
@@ -30,17 +102,29 @@ npm install
 
 ## Setup
 
-### 1. Create Coinbase API Key (for crypto)
+### 1. Set Up SnapTrade (Recommended)
 
-1. Go to [CDP Portal](https://portal.cdp.coinbase.com/)
-2. Create a **Secret API key**
-3. Set permission to **View** only
-4. Select **ECDSA** algorithm (required for SDK)
-5. Download the JSON file
+SnapTrade provides the most complete holdings data, including staked crypto.
 
-### 2. Encrypt Coinbase Credentials
+```bash
+node setup-snaptrade.js
+```
 
-Place the downloaded `cdp_api_key.json` in the module folder, then run:
+Enter your clientId and consumerKey when prompted. Then generate a connection portal URL:
+
+```bash
+node snaptrade-connect.js
+```
+
+Open the URL in a browser to connect your brokerage accounts (Fidelity, Coinbase, etc.).
+
+### 2. Set Up Coinbase CDP API (Alternative to SnapTrade for Crypto)
+
+Only needed if you're not using SnapTrade for crypto holdings.
+
+1. Download your API key JSON from [CDP Portal](https://portal.cdp.coinbase.com/projects/api-keys)
+2. Place `cdp_api_key.json` in the module folder
+3. Run:
 
 ```bash
 node setup-credentials.js
@@ -51,13 +135,7 @@ This will:
 - Create `cdp-credentials.enc` from your JSON file
 - Prompt to delete the original JSON (recommended)
 
-### 3. Create Twelve Data API Key (for stocks/forex)
-
-1. Go to [Twelve Data](https://twelvedata.com/)
-2. Create a free account
-3. Copy your API key from the dashboard
-
-### 4. Encrypt Twelve Data Credentials
+### 3. Set Up Twelve Data (Required for Stock/Forex Pricing)
 
 ```bash
 node setup-twelvedata.js
@@ -65,9 +143,28 @@ node setup-twelvedata.js
 
 Enter your API key when prompted. This creates `twelvedata-credentials.enc`.
 
-### 5. Add Manual Holdings
+### 4. Configure MagicMirror
 
-Create `manual-holdings.json` in the module folder:
+Add to your `config/config.js`:
+
+```javascript
+{
+  module: "MMM-Fintech",
+  position: "top_right",
+  config: {
+    title: "Portfolio",
+    showLastUpdated: true,
+    showPricePerUnit: true,
+    showQuantity: true,
+    showForex: true,
+    sortBy: "value"
+  }
+}
+```
+
+### 5. Add Manual Holdings (Optional)
+
+Create `manual-holdings.json` in the module folder for any holdings not covered by APIs, or as your sole holdings source if not using SnapTrade or Coinbase:
 
 ```json
 {
@@ -92,6 +189,13 @@ Create `manual-holdings.json` in the module folder:
       "quantity": 25,
       "type": "etf",
       "source": "fidelity"
+    },
+    {
+      "symbol": "SPAXX",
+      "quantity": 1000,
+      "type": "cash",
+      "source": "fidelity",
+      "notes": "Money market fund"
     }
   ],
   "forex": [
@@ -110,24 +214,7 @@ Create `manual-holdings.json` in the module folder:
 
 **Forex Pairs**: Inverse rates shown as a column (can be hidden via `showInverseForex: false`)
 
-### 6. Configure MagicMirror
-
-Add to your `config/config.js`:
-
-```javascript
-{
-  module: "MMM-Fintech",
-  position: "top_right",
-  config: {
-    title: "Portfolio",
-    showLastUpdated: true,
-    showPricePerUnit: true,
-    showQuantity: true,
-    showForex: true,
-    sortBy: "value"
-  }
-}
-```
+**Note**: You must update this file manually whenever your holdings change. If using SnapTrade, this file is only needed for holdings at unsupported brokerages.
 
 ## Configuration Options
 
@@ -136,7 +223,7 @@ Add to your `config/config.js`:
 | `title` | `"Portfolio"` | Header text |
 | `fontSize` | `100` | Font size as percentage (e.g., 80 for smaller, 120 for larger) |
 | `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
-| `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, â‚¬, Â£) or `"code"` (USD, EUR) |
+| `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
 | `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
 | `stockPriceUpdateInterval` | `1200000` | Stock/forex price refresh (20 min) |
 | `showLastUpdated` | `true` | Show last sync timestamp |
@@ -265,7 +352,8 @@ config: {
 | `cdp_api_key.json` | Original Coinbase key (delete after setup) | Ignored |
 | `cdp-credentials.enc` | Encrypted Coinbase credentials | Ignored |
 | `twelvedata-credentials.enc` | Encrypted Twelve Data credentials | Ignored |
-| `~/.mmm-fintech-key` | Encryption key | N/A |
+| `snaptrade-credentials.enc` | Encrypted SnapTrade credentials | Ignored |
+| `~/.mmm-fintech-key` | Encryption key (shared by all providers) | N/A |
 | `manual-holdings.json` | Manual holdings and forex | Ignored |
 | `cache.json` | Cached data | Ignored |
 
@@ -318,6 +406,9 @@ node test-twelvedata.js    # Test Twelve Data
 **"TwelveData provider not configured"**
 - Run `node setup-twelvedata.js` to add credentials
 
+**"SnapTrade provider not configured"**
+- Run `node setup-snaptrade.js` to add credentials
+
 **"Rate limit exceeded"**
 - Twelve Data: Wait for credit reset (per minute)
 - Coinbase: Uses exponential backoff automatically
@@ -333,22 +424,3 @@ See [ROADMAP.md](ROADMAP.md) for planned features and development phases.
 ## License
 
 MIT
-
-## Developer Workflow
-
-For development on Windows and testing on Raspberry Pi, see DEV.md.
-
-## SnapTrade (Work in progress)
-
-SnapTrade integration is being added to support brokerage position sync.
-
-
-### SnapTrade setup (WIP)
-
-Run the setup helper to enter credentials (storage/encryption is added in a later step):
-
-```powershell
-node .\setup-snaptrade.js
-```
-setup-snaptrade.js uses the shared MMM-Fintech encryption key at ~/.mmm-fintech-key (same key used for other *.enc credentials). Do not delete this key unless you plan to re-encrypt all credentials.
-The setup script creates an encrypted credentials file (snaptrade-credentials.enc) in the module directory using AES-256-GCM. The encryption key is stored at ~/.mmm-fintech-key (copy this file to the same path on your Raspberry Pi).
