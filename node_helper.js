@@ -2,6 +2,7 @@ const NodeHelper = require("node_helper");
 const fs = require("fs");
 const path = require("path");
 const providers = require("./providers");
+const HistoryManager = require("./lib/history-manager");
 
 module.exports = NodeHelper.create({
   start: function() {
@@ -18,6 +19,7 @@ module.exports = NodeHelper.create({
     this.conversionRate = 1;
     this.postClosePollByType = {};
     this.lastMarketStatusLog = {};
+    this.historyManager = null;
   },
 
   log: function(msg) {
@@ -41,6 +43,7 @@ module.exports = NodeHelper.create({
   socketNotificationReceived: function(notification, payload) {
     if (notification === "MMM-FINTECH_INIT") {
       this.config = payload.config;
+      this.historyManager = new HistoryManager(this.path, this.config);
       this.initProviders();
       this.loadCachedData();
     }
@@ -551,6 +554,59 @@ module.exports = NodeHelper.create({
     return result;
   },
 
+  calculateValuesByType: function(holdings) {
+    var cryptoAsForex = this.config.cryptoAsForex || [];
+    var totalValue = 0;
+    var cryptoValue = 0;
+    var traditionalValue = 0;
+
+    for (var i = 0; i < holdings.length; i++) {
+      var h = holdings[i];
+      var value = h.value || 0;
+
+      if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+        continue;
+      }
+
+      totalValue += value;
+
+      if (h.type === "crypto") {
+        cryptoValue += value;
+      } else {
+        traditionalValue += value;
+      }
+    }
+
+    return {
+      totalValue: totalValue,
+      cryptoValue: cryptoValue,
+      traditionalValue: traditionalValue
+    };
+  },
+
+  recordSnapshot: function(holdings, isDaily) {
+    if (!this.historyManager) {
+      return;
+    }
+
+    var values = this.calculateValuesByType(holdings);
+
+    this.historyManager.addHourlySnapshot(
+      values.totalValue,
+      values.cryptoValue,
+      values.traditionalValue
+    );
+
+    if (isDaily) {
+      this.historyManager.addDailySnapshot(
+        values.totalValue,
+        values.cryptoValue,
+        values.traditionalValue,
+        holdings
+      );
+    }
+  },
+
   syncHoldings: async function() {
     var self = this;
     this.log("Starting holdings sync...");
@@ -685,6 +741,8 @@ module.exports = NodeHelper.create({
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
       this.log("Cache updated with " + allHoldings.length + " holdings and " + forexRates.length + " forex rates");
+
+      this.recordSnapshot(allHoldings, true);
 
       this.clearError();
       this.sendSocketNotification("MMM-FINTECH_DATA", cache);
@@ -825,6 +883,8 @@ module.exports = NodeHelper.create({
       } else {
         this.log("Updated " + updatedCount + " " + typeLabel + " prices");
       }
+
+      this.recordSnapshot(cache.holdings, false);
 
       this.clearError();
       this.sendSocketNotification("MMM-FINTECH_DATA", cache);

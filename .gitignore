@@ -10,6 +10,8 @@ test-coinbase.js
 test-twelvedata.js
 manual-holdings.json
 AI-CONTEXT.md
+cache.json
+history.json
 
 # SnapTrade
 snaptrade-credentials.enc
@@ -19,6 +21,7 @@ test-snaptrade.js
 test-snaptrade-provider.js
 test-full-sync.js
 test-costbasis.js
+test-history.js
 
 # Local patch artifacts
 *.patch
