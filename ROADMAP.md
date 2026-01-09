@@ -120,6 +120,18 @@ Add cost basis tracking and unrealized gain/loss display.
 
 **Status**: Planning
 
+**Decisions Made**:
+- Chart style: Area chart with gradient fill
+- `chartMode` config: `combined` | `separate` | `exclude-crypto`
+  - `combined` - All assets in one chart
+  - `separate` - Two charts: traditional investments + crypto
+  - `exclude-crypto` - Only traditional investments charted
+- `chartPeriod` config: `1D` | `1W` | `1M` | `3M` | `1Y` | `All`
+- Data storage: Daily snapshots in `history.json`
+- Rendering: Chart.js
+- Start fresh (no backfill of historical data)
+- Display below holdings table
+
 Add visual performance charts for portfolio tracking over time.
 
 ### Features
