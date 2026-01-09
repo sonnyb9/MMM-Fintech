@@ -605,6 +605,18 @@ module.exports = NodeHelper.create({
         holdings
       );
     }
+
+    this.sendHistoryData();
+  },
+
+  sendHistoryData: function() {
+    if (!this.historyManager || !this.config.showCharts) {
+      return;
+    }
+
+    var period = this.config.chartPeriod || "1M";
+    var data = this.historyManager.getChartData(period);
+    this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data });
   },
 
   syncHoldings: async function() {
@@ -908,5 +920,7 @@ module.exports = NodeHelper.create({
     } else {
       this.log("No cache file found");
     }
+
+    this.sendHistoryData();
   }
 });

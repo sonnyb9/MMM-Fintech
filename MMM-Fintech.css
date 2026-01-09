@@ -202,3 +202,44 @@
     transform: translateX(-100%);
   }
 }
+
+.mmm-fintech-chart-section {
+  margin-top: 15px;
+  padding-top: 15px;
+  border-top: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.mmm-fintech-period-selector {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.mmm-fintech-period-btn {
+  padding: 3px 8px;
+  font-size: 0.8em;
+  opacity: 0.6;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.mmm-fintech-period-btn.active {
+  opacity: 1;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.mmm-fintech-chart-container {
+  height: 150px;
+  margin-top: 10px;
+}
+
+.mmm-fintech-chart-crypto {
+  margin-top: 15px;
+}
+
+.mmm-fintech-chart-label {
+  font-size: 0.8em;
+  opacity: 0.7;
+  margin-bottom: 5px;
+}

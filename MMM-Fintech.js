@@ -8,6 +8,10 @@ Module.register("MMM-Fintech", {
     showGainLoss: true,
     showForex: true,
     showInverseForex: true,
+    showCharts: false,
+    chartMode: "combined",
+    chartPeriod: "1M",
+    historyRetention: 1825,
     cryptoAsForex: [],
     sortBy: "value",
     title: "Portfolio",
@@ -83,6 +87,10 @@ Module.register("MMM-Fintech", {
     this.hasError = false;
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
+    this.chartData = [];
+    this.chartInstance = null;
+    this.cryptoChartInstance = null;
+    this.selectedPeriod = this.config.chartPeriod;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
@@ -96,6 +104,10 @@ Module.register("MMM-Fintech", {
 
   getStyles: function () {
     return ["MMM-Fintech.css"];
+  },
+
+  getScripts: function () {
+    return ["https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"];
   },
 
   getColumnCount: function () {
@@ -142,6 +154,11 @@ Module.register("MMM-Fintech", {
     }
 
     wrapper.appendChild(table);
+
+    if (this.config.showCharts && this.chartData.length > 0) {
+      var chartSection = this.buildChartSection();
+      wrapper.appendChild(chartSection);
+    }
 
     var warningData = this.getWarnings();
     var isStale = this.isDataStale();
@@ -532,6 +549,217 @@ Module.register("MMM-Fintech", {
     return date.toLocaleString();
   },
 
+  buildChartSection: function () {
+    var self = this;
+    var section = document.createElement("div");
+    section.className = "mmm-fintech-chart-section";
+
+    var periodSelector = document.createElement("div");
+    periodSelector.className = "mmm-fintech-period-selector";
+
+    var periods = ["1D", "1W", "1M", "3M", "1Y", "All"];
+    for (var i = 0; i < periods.length; i++) {
+      var period = periods[i];
+      var btn = document.createElement("span");
+      btn.className = "mmm-fintech-period-btn";
+      btn.innerHTML = period;
+      btn.dataset.period = period;
+      if (period === this.selectedPeriod) {
+        btn.classList.add("active");
+      }
+      periodSelector.appendChild(btn);
+    }
+    section.appendChild(periodSelector);
+
+    var chartMode = this.config.chartMode;
+
+    if (chartMode === "combined") {
+      var chartContainer = document.createElement("div");
+      chartContainer.className = "mmm-fintech-chart-container";
+      var canvas = document.createElement("canvas");
+      canvas.id = "mmm-fintech-chart-main";
+      chartContainer.appendChild(canvas);
+      section.appendChild(chartContainer);
+    } else if (chartMode === "separate") {
+      var tradContainer = document.createElement("div");
+      tradContainer.className = "mmm-fintech-chart-container";
+      var tradLabel = document.createElement("div");
+      tradLabel.className = "mmm-fintech-chart-label";
+      tradLabel.innerHTML = "Traditional";
+      tradContainer.appendChild(tradLabel);
+      var tradCanvas = document.createElement("canvas");
+      tradCanvas.id = "mmm-fintech-chart-traditional";
+      tradContainer.appendChild(tradCanvas);
+      section.appendChild(tradContainer);
+
+      var cryptoContainer = document.createElement("div");
+      cryptoContainer.className = "mmm-fintech-chart-container mmm-fintech-chart-crypto";
+      var cryptoLabel = document.createElement("div");
+      cryptoLabel.className = "mmm-fintech-chart-label";
+      cryptoLabel.innerHTML = "Crypto";
+      cryptoContainer.appendChild(cryptoLabel);
+      var cryptoCanvas = document.createElement("canvas");
+      cryptoCanvas.id = "mmm-fintech-chart-crypto";
+      cryptoContainer.appendChild(cryptoCanvas);
+      section.appendChild(cryptoContainer);
+    } else {
+      var container = document.createElement("div");
+      container.className = "mmm-fintech-chart-container";
+      var tradOnlyCanvas = document.createElement("canvas");
+      tradOnlyCanvas.id = "mmm-fintech-chart-main";
+      container.appendChild(tradOnlyCanvas);
+      section.appendChild(container);
+    }
+
+    var renderSelf = this;
+    setTimeout(function () {
+      renderSelf.renderCharts();
+    }, 100);
+
+    return section;
+  },
+
+  renderCharts: function () {
+    var chartMode = this.config.chartMode;
+    var data = this.chartData;
+
+    if (!data || data.length === 0) {
+      return;
+    }
+
+    if (chartMode === "combined") {
+      this.renderChart("mmm-fintech-chart-main", data, "totalValue", "Portfolio Value");
+    } else if (chartMode === "separate") {
+      this.renderChart("mmm-fintech-chart-traditional", data, "traditionalValue", "Traditional");
+      this.renderChart("mmm-fintech-chart-crypto", data, "cryptoValue", "Crypto", true);
+    } else {
+      this.renderChart("mmm-fintech-chart-main", data, "traditionalValue", "Traditional Investments");
+    }
+  },
+
+  renderChart: function (canvasId, data, valueKey, label, isCrypto) {
+    var canvas = document.getElementById(canvasId);
+    if (!canvas) {
+      return;
+    }
+
+    var ctx = canvas.getContext("2d");
+
+    var labels = [];
+    var values = [];
+    var isHourly = data.length > 0 && data[0].timestamp;
+
+    for (var i = 0; i < data.length; i++) {
+      var point = data[i];
+      if (isHourly) {
+        var dt = new Date(point.timestamp);
+        labels.push(dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+      } else {
+        labels.push(this.formatChartDate(point.date));
+      }
+      values.push(point[valueKey] || 0);
+    }
+
+    var gradientColor = isCrypto ? "rgba(255, 165, 0, " : "rgba(100, 200, 100, ";
+    var lineColor = isCrypto ? "rgba(255, 165, 0, 1)" : "rgba(100, 200, 100, 1)";
+
+    var gradient = ctx.createLinearGradient(0, 0, 0, canvas.height || 150);
+    gradient.addColorStop(0, gradientColor + "0.4)");
+    gradient.addColorStop(1, gradientColor + "0.05)");
+
+    var existingChart = isCrypto ? this.cryptoChartInstance : this.chartInstance;
+    if (existingChart) {
+      existingChart.destroy();
+    }
+
+    var newChart = new Chart(ctx, {
+      type: "line",
+      data: {
+        labels: labels,
+        datasets: [{
+          label: label,
+          data: values,
+          fill: true,
+          backgroundColor: gradient,
+          borderColor: lineColor,
+          borderWidth: 2,
+          tension: 0.3,
+          pointRadius: 0,
+          pointHoverRadius: 4
+        }]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: false
+          },
+          tooltip: {
+            mode: "index",
+            intersect: false,
+            callbacks: {
+              label: function (context) {
+                return "$" + context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            display: true,
+            grid: {
+              display: false
+            },
+            ticks: {
+              color: "#999",
+              maxTicksLimit: 6,
+              font: {
+                size: 10
+              }
+            }
+          },
+          y: {
+            display: true,
+            grid: {
+              color: "rgba(255, 255, 255, 0.1)"
+            },
+            ticks: {
+              color: "#999",
+              callback: function (value) {
+                if (value >= 1000) {
+                  return "$" + (value / 1000).toFixed(0) + "k";
+                }
+                return "$" + value;
+              },
+              font: {
+                size: 10
+              }
+            }
+          }
+        },
+        interaction: {
+          mode: "nearest",
+          axis: "x",
+          intersect: false
+        }
+      }
+    });
+
+    if (isCrypto) {
+      this.cryptoChartInstance = newChart;
+    } else {
+      this.chartInstance = newChart;
+    }
+  },
+
+  formatChartDate: function (dateStr) {
+    var date = new Date(dateStr);
+    var month = date.getMonth() + 1;
+    var day = date.getDate();
+    return month + "/" + day;
+  },
+
   socketNotificationReceived: function (notification, payload) {
     if (notification === "MMM-FINTECH_DATA") {
       this.holdings = payload.holdings || [];
@@ -546,6 +774,13 @@ Module.register("MMM-Fintech", {
       this.invalidSymbols = payload.invalidSymbols || [];
       this.rateLimitedSymbols = payload.rateLimitedSymbols || [];
       this.updateDom();
+    }
+
+    if (notification === "MMM-FINTECH_HISTORY") {
+      this.chartData = payload.data || [];
+      if (this.config.showCharts) {
+        this.updateDom();
+      }
     }
   }
 });
