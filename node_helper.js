@@ -610,18 +610,12 @@ module.exports = NodeHelper.create({
   },
 
   sendHistoryData: function() {
-    if (!this.historyManager) {
-      this.log("sendHistoryData: no historyManager");
-      return;
-    }
-    if (!this.config.showCharts) {
-      this.log("sendHistoryData: showCharts is false");
+    if (!this.historyManager || !this.config.showCharts) {
       return;
     }
 
     var period = this.config.chartPeriod || "1M";
     var data = this.historyManager.getChartData(period);
-    this.log("Sending history data: " + data.length + " points for period " + period);
     this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data });
   },
 
