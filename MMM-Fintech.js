@@ -149,12 +149,13 @@ Module.register("MMM-Fintech", {
       }
     }
 
+    wrapper.appendChild(table);
+
     var forexToShow = this.getDisplayForex();
     if (this.config.showForex && forexToShow.length > 0) {
-      this.buildForexRows(table, forexToShow);
+      var forexSection = this.buildForexSection(forexToShow);
+      wrapper.appendChild(forexSection);
     }
-
-    wrapper.appendChild(table);
 
     if (this.config.showCharts && this.chartData.length > 0) {
       var chartSection = this.buildChartSection();
@@ -349,37 +350,27 @@ Module.register("MMM-Fintech", {
     table.appendChild(row);
   },
 
-  buildForexRows: function (table, forexData) {
-    var colCount = this.getColumnCount();
+  buildForexSection: function (forexData) {
+    var section = document.createElement("div");
+    section.className = "mmm-fintech-forex-section";
+
+    var title = document.createElement("div");
+    title.className = "mmm-fintech-forex-title";
+    title.innerHTML = "Exchange Rates";
+    section.appendChild(title);
+
+    var table = document.createElement("table");
+    table.className = "mmm-fintech-table mmm-fintech-forex-table";
+
     var showInverse = this.config.showInverseForex;
 
-    var titleRow = document.createElement("tr");
-    titleRow.className = "mmm-fintech-forex-title-row";
-    var titleCell = document.createElement("td");
-    titleCell.colSpan = colCount;
-    titleCell.className = "mmm-fintech-forex-title";
-    titleCell.innerHTML = "Exchange Rates";
-    titleRow.appendChild(titleCell);
-    table.appendChild(titleRow);
-
     var headerRow = document.createElement("tr");
-    headerRow.className = "mmm-fintech-forex-header-row";
     var headerHtml = "<th>Currencies</th>";
-    if (this.config.showQuantity) {
-      if (showInverse) {
-        headerHtml += "<th class='mmm-fintech-forex-inverse-header'>Inverse</th>";
-      } else {
-        headerHtml += "<th></th>";
-      }
-    }
-    if (this.config.showPricePerUnit) {
-      headerHtml += "<th></th>";
+    if (showInverse) {
+      headerHtml += "<th class='mmm-fintech-forex-inverse-header'>Inverse</th>";
     }
     headerHtml += "<th class='mmm-fintech-forex-rate-header'>Rate</th>";
     headerHtml += "<th class='mmm-fintech-forex-change-header'>24h</th>";
-    if (this.config.showGainLoss) {
-      headerHtml += "<th></th>";
-    }
     headerRow.innerHTML = headerHtml;
     table.appendChild(headerRow);
 
@@ -392,18 +383,13 @@ Module.register("MMM-Fintech", {
       pairCell.innerHTML = fx.pair;
       row.appendChild(pairCell);
 
-      if (this.config.showQuantity) {
+      if (showInverse) {
         var inverseCell = document.createElement("td");
         inverseCell.className = "mmm-fintech-forex-inverse";
-        if (showInverse && fx.rate > 0) {
+        if (fx.rate > 0) {
           inverseCell.innerHTML = this.formatForexRate(1 / fx.rate);
         }
         row.appendChild(inverseCell);
-      }
-
-      if (this.config.showPricePerUnit) {
-        var emptyPrice = document.createElement("td");
-        row.appendChild(emptyPrice);
       }
 
       var rateCell = document.createElement("td");
@@ -425,13 +411,11 @@ Module.register("MMM-Fintech", {
       }
       row.appendChild(changeCell);
 
-      if (this.config.showGainLoss) {
-        var emptyGainLoss = document.createElement("td");
-        row.appendChild(emptyGainLoss);
-      }
-
       table.appendChild(row);
     }
+
+    section.appendChild(table);
+    return section;
   },
 
   isDataStale: function () {

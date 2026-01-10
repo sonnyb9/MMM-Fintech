@@ -112,7 +112,8 @@
   padding-left: 15px;
 }
 
-.mmm-fintech-forex-title-row td {
+.mmm-fintech-forex-section {
+  margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
 }
@@ -120,19 +121,7 @@
 .mmm-fintech-forex-title {
   font-size: 1.2em;
   text-align: center;
-  padding-bottom: 10px;
-}
-
-.mmm-fintech-forex-header-row th {
-  font-weight: normal;
-  opacity: 0.6;
-  font-size: 0.8em;
-  text-align: right;
-  padding-bottom: 5px;
-}
-
-.mmm-fintech-forex-header-row th:first-child {
-  text-align: left;
+  margin-bottom: 10px;
 }
 
 .mmm-fintech-forex-pair {
