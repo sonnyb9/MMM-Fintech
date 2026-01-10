@@ -10,6 +10,8 @@ test-coinbase.js
 test-twelvedata.js
 manual-holdings.json
 AI-CONTEXT.md
+DEV.md
+QA-TEST-PLAN-v0.8.0.md
 cache.json
 history.json
 
