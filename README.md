@@ -154,7 +154,7 @@ Add to your `config/config.js`:
 ```javascript
 {
   module: "MMM-Fintech",
-  position: "top_right",
+  position: "middle_center",  // Recommended for best display
   config: {
     title: "Portfolio",
     showLastUpdated: true,

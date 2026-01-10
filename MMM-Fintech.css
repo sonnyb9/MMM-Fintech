@@ -1,15 +1,19 @@
 .mmm-fintech {
   padding: 10px;
+  margin: 0 auto;
+  text-align: center;
 }
 
 .mmm-fintech-header {
   font-size: 1.2em;
   margin-bottom: 10px;
+  text-align: center;
 }
 
 .mmm-fintech-table {
   width: 100%;
   border-collapse: collapse;
+  margin: 0 auto;
 }
 
 .mmm-fintech-table th {
@@ -115,7 +119,7 @@
 
 .mmm-fintech-forex-title {
   font-size: 1.2em;
-  text-align: left;
+  text-align: center;
   padding-bottom: 10px;
 }
 
