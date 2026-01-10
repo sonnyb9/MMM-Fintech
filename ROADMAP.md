@@ -116,80 +116,25 @@ Add cost basis tracking and unrealized gain/loss display.
 - ✅ **G/L Column**: New column with green/red coloring
 - ✅ **Config Option**: `showGainLoss` (default: true)
 
-## 📋 Phase 4 - Portfolio Performance Charts
+## ✅ Phase 4 - Portfolio Performance Charts (Complete)
 
-**Status**: Planning
+**Status**: Released in v0.8.0
 
-**Decisions Made**:
-- Chart style: Area chart with gradient fill
-- `chartMode` config: `combined` | `separate` | `exclude-crypto`
-  - `combined` - All assets in one chart
-  - `separate` - Two charts: traditional investments + crypto
-  - `exclude-crypto` - Only traditional investments charted
-- `chartPeriod` config: `1D` | `1W` | `1M` | `3M` | `1Y` | `All`
-- Data storage: Daily snapshots in `history.json`
-- Rendering: Chart.js
-- Start fresh (no backfill of historical data)
-- Display below holdings table
+Visual performance charts for portfolio tracking over time.
 
-Add visual performance charts for portfolio tracking over time.
+- ✅ **Chart.js Integration**: Area chart with gradient fill via CDN
+- ✅ **History Storage**: `history.json` with hourly and daily snapshots
+- ✅ **Chart Modes**: combined / separate / exclude-crypto
+- ✅ **Time Periods**: 1D (hourly), 1W, 1M, 3M, 1Y, All (daily)
+- ✅ **Config Options**: showCharts, chartMode, chartPeriod, showPeriodSelector, historyRetention
+- ✅ **Storage Efficiency**: ~250 KB/year for 10 holdings
 
-### Features
+### Future Enhancement: Individual Holding Charts
 
-- **Total Portfolio Value Chart**
-  - Built from daily snapshots (starting from implementation date)
-  - Time period selector: 1D, 1W, 1M, 3M, 1Y, All
-  - Displayed below holdings table
-
-- **Individual Holding Charts** (optional)
-  - Configurable via `chartHoldings` array
-  - Half-size charts stacked below main portfolio chart
-  - Historical price data from Twelve Data `/time_series` endpoint
-
-- **Toggle to show/hide charts**
-
-### Data Storage
-
-- Local JSON file (`history.json`, gitignored)
-- Daily snapshot at US market close (4:00 PM ET)
-- Configurable retention period (default: 5 years)
-
-**Snapshot Structure**:
-```json
-{
-  "date": "2025-01-02",
-  "totalValue": 152340.50,
-  "holdings": {
-    "NVDA": { "quantity": 72.49, "price": 187.72, "value": 13609.42 },
-    "ETH": { "quantity": 0.38, "price": 3350.00, "value": 1273.00 }
-  }
-}
-```
-
-### Technical
-
-- Chart.js library for rendering
-- ~1KB per daily snapshot (~365KB/year)
-
-### Config Options
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `showCharts` | `false` | Enable/disable chart display |
-| `chartHoldings` | `[]` | Array of symbols for individual holding charts |
-| `historyRetention` | `1825` | Days to retain history (default: 5 years) |
-
-### Implementation Tasks
-
-- [ ] Add Chart.js dependency
-- [ ] Create `history.json` storage with daily snapshot logic
-- [ ] Schedule snapshot at US market close (4:00 PM ET)
-- [ ] Implement history retention/cleanup
-- [ ] Build total portfolio value chart component
-- [ ] Build individual holding chart component
-- [ ] Add time period selector (1D, 1W, 1M, 3M, 1Y, All)
-- [ ] Fetch historical prices from Twelve Data `/time_series`
-- [ ] Add config options and toggle
+Optional feature for tracking individual holdings over time:
+- Would use Twelve Data `/time_series` endpoint
+- Configurable via `chartHoldings` array
+- Not implemented in v0.8.0 to avoid API complexity
 
 ## 🔮 Future Enhancements
 
@@ -225,6 +170,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
+- **v0.8.0** (2026-01-09) - Phase 4 complete: Portfolio performance charts
 - **v0.7.0** (2026-01-08) - Phase 3.3 complete: Cost basis and gain/loss tracking
 - **v0.6.0** (2026-01-07) - Phase 3.2 complete: SnapTrade integration for brokerage holdings
 - **v0.5.0** (2025-01-05) - Phase 3.1 complete: Multi-asset support, Twelve Data integration, market hours

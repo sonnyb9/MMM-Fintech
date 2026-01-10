@@ -2,6 +2,28 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.8.0] - 2026-01-09
+
+### Added
+- **Portfolio Performance Charts**: Visual tracking of portfolio value over time
+  - Area chart with gradient fill
+  - Hourly snapshots (rolling 48 hours) for 1D view
+  - Daily snapshots for 1W, 1M, 3M, 1Y, All views
+  - Chart.js integration via CDN
+- **Chart Configuration Options**:
+  - `showCharts` - Enable chart display (default: false)
+  - `chartMode` - "combined" / "separate" / "exclude-crypto"
+  - `chartPeriod` - "1D" / "1W" / "1M" / "3M" / "1Y" / "All"
+  - `showPeriodSelector` - Show period buttons for touch devices (default: false)
+  - `historyRetention` - Days to retain daily history (default: 1825 / 5 years)
+- **History Storage**: Local `history.json` file for snapshot data
+  - ~600 bytes per snapshot (10 holdings)
+  - ~250 KB after 1 year, ~1.1 MB after 5 years
+
+### Changed
+- Price updates now record hourly snapshots for chart data
+- Holdings sync now records daily snapshots for chart data
+
 ## [0.7.0] - 2026-01-08
 
 ### Added

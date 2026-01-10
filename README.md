@@ -12,6 +12,7 @@ A MagicMirror² module for displaying consolidated financial holdings with real-
 - **Twelve Data Integration**: Stocks, ETFs, mutual funds, and forex pricing
 - **Manual Holdings**: Support for manual entry without any API registrations
 - **Cost Basis & Gain/Loss**: Display unrealized gain/loss percentages
+- **Portfolio Charts**: Visual performance tracking over time
 - **Real-time Pricing**: Configurable update intervals by asset type
 - **Market Hours Scheduling**: Limit stock/forex polling to market hours
 - **24h Change**: Shows percent change for each holding
@@ -241,6 +242,11 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 | `holdingsSyncTime` | `"07:45"` | Daily holdings sync time (HH:MM) |
 | `staleHoldingsThreshold` | `90000000` | Holdings stale after 25 hours |
 | `stalePricesThreshold` | `3900000` | Prices stale after 65 minutes |
+| `showCharts` | `false` | Enable portfolio performance charts |
+| `chartMode` | `"combined"` | Chart mode: `"combined"`, `"separate"`, or `"exclude-crypto"` |
+| `chartPeriod` | `"1M"` | Default chart period: `"1D"`, `"1W"`, `"1M"`, `"3M"`, `"1Y"`, `"All"` |
+| `showPeriodSelector` | `false` | Show period selector buttons (for touch devices) |
+| `historyRetention` | `1825` | Days to retain chart history (default: 5 years) |
 | `marketHours` | See below | Market-hour polling schedules by asset type |
 
 ## Market Hours Scheduling
@@ -335,6 +341,45 @@ config: {
 }
 ```
 
+### Enable Portfolio Charts
+```javascript
+config: {
+  showCharts: true,
+  chartPeriod: "1M"
+}
+```
+
+### Separate Crypto Chart
+```javascript
+config: {
+  showCharts: true,
+  chartMode: "separate"
+}
+```
+
+## Portfolio Charts
+
+The module can display portfolio value charts over time.
+
+**Chart Modes:**
+- `combined` - Single chart showing total portfolio value
+- `separate` - Two charts: Traditional investments + Crypto
+- `exclude-crypto` - Single chart showing only traditional investments
+
+**Time Periods:**
+- `1D` - Last 24 hours (uses hourly snapshots)
+- `1W`, `1M`, `3M`, `1Y`, `All` - Use daily snapshots
+
+**Data Collection:**
+- Hourly snapshots recorded during each price update (rolling 48 hours)
+- Daily snapshots recorded during the morning holdings sync
+- Data starts fresh from when you enable charts (no historical backfill)
+
+**Storage Requirements (10 holdings):**
+- ~600 bytes per snapshot
+- ~250 KB after 1 year
+- ~1.1 MB after 5 years
+
 ## Scheduling
 
 - **Holdings sync**: Daily at configured time (default: 7:45am), plus on startup if data >24 hours old
@@ -360,6 +405,7 @@ config: {
 | `~/.mmm-fintech-key` | Encryption key (shared by all providers) | N/A |
 | `manual-holdings.json` | Manual holdings and forex | Ignored |
 | `cache.json` | Cached data | Ignored |
+| `history.json` | Chart history snapshots | Ignored |
 
 ## Finding Valid Symbols
 
