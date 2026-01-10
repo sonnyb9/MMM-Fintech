@@ -11,6 +11,7 @@ Module.register("MMM-Fintech", {
     showCharts: false,
     chartMode: "combined",
     chartPeriod: "1M",
+    showPeriodSelector: false,
     historyRetention: 1825,
     cryptoAsForex: [],
     sortBy: "value",
@@ -554,22 +555,24 @@ Module.register("MMM-Fintech", {
     var section = document.createElement("div");
     section.className = "mmm-fintech-chart-section";
 
-    var periodSelector = document.createElement("div");
-    periodSelector.className = "mmm-fintech-period-selector";
+    if (this.config.showPeriodSelector) {
+      var periodSelector = document.createElement("div");
+      periodSelector.className = "mmm-fintech-period-selector";
 
-    var periods = ["1D", "1W", "1M", "3M", "1Y", "All"];
-    for (var i = 0; i < periods.length; i++) {
-      var period = periods[i];
-      var btn = document.createElement("span");
-      btn.className = "mmm-fintech-period-btn";
-      btn.innerHTML = period;
-      btn.dataset.period = period;
-      if (period === this.selectedPeriod) {
-        btn.classList.add("active");
+      var periods = ["1D", "1W", "1M", "3M", "1Y", "All"];
+      for (var i = 0; i < periods.length; i++) {
+        var period = periods[i];
+        var btn = document.createElement("span");
+        btn.className = "mmm-fintech-period-btn";
+        btn.innerHTML = period;
+        btn.dataset.period = period;
+        if (period === this.selectedPeriod) {
+          btn.classList.add("active");
+        }
+        periodSelector.appendChild(btn);
       }
-      periodSelector.appendChild(btn);
+      section.appendChild(periodSelector);
     }
-    section.appendChild(periodSelector);
 
     var chartMode = this.config.chartMode;
 
