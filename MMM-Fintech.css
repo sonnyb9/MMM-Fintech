@@ -1,19 +1,20 @@
 .mmm-fintech {
   padding: 10px;
   margin: 0 auto;
-  text-align: center;
+  display: table;
 }
 
 .mmm-fintech-header {
   font-size: 1.2em;
   margin-bottom: 10px;
   text-align: center;
+  display: table-caption;
+  caption-side: top;
 }
 
 .mmm-fintech-table {
   width: 100%;
   border-collapse: collapse;
-  text-align: left;
 }
 
 .mmm-fintech-table th {
@@ -118,6 +119,10 @@
   border-top: 1px solid rgba(255, 255, 255, 0.3);
 }
 
+.mmm-fintech-forex-table {
+  width: 100%;
+}
+
 .mmm-fintech-forex-title {
   font-size: 1.2em;
   text-align: center;
@@ -200,7 +205,7 @@
   margin-top: 15px;
   padding-top: 15px;
   border-top: 1px solid rgba(255, 255, 255, 0.3);
-  text-align: left;
+  width: 100%;
 }
 
 .mmm-fintech-period-selector {
