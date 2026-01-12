@@ -23,6 +23,9 @@ Module.register("MMM-Fintech", {
     currency: "USD",
     currencyStyle: "symbol",
     fontSize: 100,
+    displayMode: "table",
+    tickerSpeed: 50,
+    tickerPause: 0,
     marketHours: {
       stock: {
         enabled: true,
@@ -83,6 +86,7 @@ Module.register("MMM-Fintech", {
     this.totalValue = 0;
     this.totalCostBasis = 0;
     this.totalGainLossPercent = null;
+    this.totalChange24h = null;
     this.lastUpdated = null;
     this.lastPriceUpdate = null;
     this.hasError = false;
@@ -92,6 +96,8 @@ Module.register("MMM-Fintech", {
     this.chartInstance = null;
     this.cryptoChartInstance = null;
     this.selectedPeriod = this.config.chartPeriod;
+    this.marketStatus = {};
+    this.tickerAnimationId = null;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
@@ -124,20 +130,33 @@ Module.register("MMM-Fintech", {
     wrapper.className = "mmm-fintech";
     wrapper.style.fontSize = this.config.fontSize + "%";
 
-    var header = document.createElement("div");
-    header.className = "mmm-fintech-header";
-    header.innerHTML = this.config.title;
-    wrapper.appendChild(header);
-
     var displayHoldings = this.getDisplayHoldings();
 
     if (!displayHoldings.length && !this.cryptoForex.length) {
+      var header = document.createElement("div");
+      header.className = "mmm-fintech-header";
+      header.innerHTML = this.config.title;
+      wrapper.appendChild(header);
+
       var empty = document.createElement("div");
       empty.className = "dimmed";
       empty.innerHTML = "Loading holdings...";
       wrapper.appendChild(empty);
       return wrapper;
     }
+
+    if (this.config.displayMode === "ticker") {
+      return this.buildTickerDom(wrapper, displayHoldings);
+    }
+
+    return this.buildTableDom(wrapper, displayHoldings);
+  },
+
+  buildTableDom: function (wrapper, displayHoldings) {
+    var header = document.createElement("div");
+    header.className = "mmm-fintech-header";
+    header.innerHTML = this.config.title;
+    wrapper.appendChild(header);
 
     var table = document.createElement("table");
     table.className = "mmm-fintech-table";
@@ -183,6 +202,108 @@ Module.register("MMM-Fintech", {
     }
 
     return wrapper;
+  },
+
+  buildTickerDom: function (wrapper, displayHoldings) {
+    wrapper.className = "mmm-fintech mmm-fintech-ticker-wrapper";
+
+    var tickerContainer = document.createElement("div");
+    tickerContainer.className = "mmm-fintech-ticker-container";
+
+    var tickerTrack = document.createElement("div");
+    tickerTrack.className = "mmm-fintech-ticker-track";
+
+    var totalChange = this.totalChange24h;
+    var totalItem = document.createElement("span");
+    totalItem.className = "mmm-fintech-ticker-item mmm-fintech-ticker-total";
+    var totalChangeClass = totalChange > 0 ? "positive" : totalChange < 0 ? "negative" : "";
+    var totalChangeStr = totalChange !== null ? this.formatChangePercent(totalChange) : "";
+    totalItem.innerHTML = "<span class='ticker-symbol'>Portfolio:</span> " +
+      "<span class='ticker-price'>" + this.formatCurrency(this.totalValue) + "</span> " +
+      "<span class='ticker-change " + totalChangeClass + "'>" + totalChangeStr + "</span>";
+    tickerTrack.appendChild(totalItem);
+
+    var sortedHoldings = this.sortHoldings(displayHoldings);
+
+    for (var i = 0; i < sortedHoldings.length; i++) {
+      var h = sortedHoldings[i];
+      var item = document.createElement("span");
+      item.className = "mmm-fintech-ticker-item";
+
+      var change = h.change24h || 0;
+      var changeClass = change > 0 ? "positive" : change < 0 ? "negative" : "";
+      var changeStr = this.formatChangePercent(change);
+
+      var isClosed = this.isMarketClosedForHolding(h);
+      var closedIndicator = isClosed ? " <span class='ticker-closed'>(Closed)</span>" : "";
+
+      item.innerHTML = "<span class='ticker-symbol'>" + h.symbol + ":</span> " +
+        "<span class='ticker-price'>" + this.formatCurrency(h.price || 0) + "</span> " +
+        "<span class='ticker-change " + changeClass + "'>" + changeStr + "</span>" +
+        closedIndicator;
+
+      tickerTrack.appendChild(item);
+    }
+
+    var tickerContent = tickerTrack.cloneNode(true);
+    tickerContent.className = "mmm-fintech-ticker-track mmm-fintech-ticker-track-clone";
+    
+    tickerContainer.appendChild(tickerTrack);
+    tickerContainer.appendChild(tickerContent);
+    wrapper.appendChild(tickerContainer);
+
+    if (this.config.showCharts && this.chartData.length > 0) {
+      var chartSection = this.buildChartSection();
+      wrapper.appendChild(chartSection);
+    }
+
+    var self = this;
+    setTimeout(function () {
+      self.startTickerAnimation();
+    }, 100);
+
+    return wrapper;
+  },
+
+  isMarketClosedForHolding: function (holding) {
+    var holdingType = holding.type || "crypto";
+
+    if (holdingType === "crypto") {
+      return false;
+    }
+
+    if (this.marketStatus && this.marketStatus[holdingType] !== undefined) {
+      return !this.marketStatus[holdingType];
+    }
+
+    return false;
+  },
+
+  formatChangePercent: function (change) {
+    if (change === null || change === undefined) {
+      return "";
+    }
+    var arrow = change > 0 ? "▲" : change < 0 ? "▼" : "";
+    var sign = change > 0 ? "+" : "";
+    return arrow + sign + change.toFixed(2) + "%";
+  },
+
+  startTickerAnimation: function () {
+    var container = document.querySelector(".mmm-fintech-ticker-container");
+    var track = document.querySelector(".mmm-fintech-ticker-track");
+
+    if (!container || !track) {
+      return;
+    }
+
+    var trackWidth = track.scrollWidth;
+    var speed = this.config.tickerSpeed;
+    var duration = (trackWidth / speed);
+
+    var tracks = document.querySelectorAll(".mmm-fintech-ticker-track, .mmm-fintech-ticker-track-clone");
+    tracks.forEach(function(t) {
+      t.style.animationDuration = duration + "s";
+    });
   },
 
   getDisplayHoldings: function () {
@@ -755,11 +876,13 @@ Module.register("MMM-Fintech", {
       this.totalValue = payload.totalValue || 0;
       this.totalCostBasis = payload.totalCostBasis || 0;
       this.totalGainLossPercent = payload.totalGainLossPercent;
+      this.totalChange24h = payload.totalChange24h || null;
       this.lastUpdated = payload.lastUpdated || null;
       this.lastPriceUpdate = payload.lastPriceUpdate || null;
       this.hasError = payload.hasError || false;
       this.invalidSymbols = payload.invalidSymbols || [];
       this.rateLimitedSymbols = payload.rateLimitedSymbols || [];
+      this.marketStatus = payload.marketStatus || {};
       this.updateDom();
     }
 

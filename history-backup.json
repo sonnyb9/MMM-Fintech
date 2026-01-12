@@ -1,0 +1,310 @@
+{
+  "hourly": [
+    {
+      "timestamp": "2026-01-09T20:58:23.511Z",
+      "totalValue": 166931.75635616435,
+      "cryptoValue": 10856.01405616436,
+      "traditionalValue": 156075.74229999998
+    },
+    {
+      "timestamp": "2026-01-09T21:58:52.809Z",
+      "totalValue": 166946.7801320965,
+      "cryptoValue": 10886.39027209652,
+      "traditionalValue": 156060.38986
+    },
+    {
+      "timestamp": "2026-01-09T22:58:10.918Z",
+      "totalValue": 166958.1508614134,
+      "cryptoValue": 10892.28179708342,
+      "traditionalValue": 156065.86906432998
+    },
+    {
+      "timestamp": "2026-01-09T23:58:27.265Z",
+      "totalValue": 166956.38818957034,
+      "cryptoValue": 10890.51912524038,
+      "traditionalValue": 156065.86906432998
+    },
+    {
+      "timestamp": "2026-01-10T00:58:27.284Z",
+      "totalValue": 166952.83466350645,
+      "cryptoValue": 10886.96559917647,
+      "traditionalValue": 156065.86906432998
+    },
+    {
+      "timestamp": "2026-01-10T01:57:15.817Z",
+      "totalValue": 166971.66899968561,
+      "cryptoValue": 10905.79993535564,
+      "traditionalValue": 156065.86906432998
+    },
+    {
+      "timestamp": "2026-01-10T02:29:47.714Z",
+      "totalValue": 166981.00914651426,
+      "cryptoValue": 10914.100317534301,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T12:55:42.779Z",
+      "totalValue": 166984.92907810293,
+      "cryptoValue": 10918.020249122972,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T13:59:23.450Z",
+      "totalValue": 166971.81762152122,
+      "cryptoValue": 10904.908792541271,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T14:52:39.966Z",
+      "totalValue": 166959.64877218357,
+      "cryptoValue": 10892.739943203589,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T15:58:35.176Z",
+      "totalValue": 166972.55326566525,
+      "cryptoValue": 10905.644436685288,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T16:58:35.990Z",
+      "totalValue": 166974.1005470498,
+      "cryptoValue": 10907.19171806984,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T17:58:35.543Z",
+      "totalValue": 166958.5243746002,
+      "cryptoValue": 10891.61554562024,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T18:58:35.620Z",
+      "totalValue": 166963.25243799252,
+      "cryptoValue": 10896.34360901254,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T19:58:35.602Z",
+      "totalValue": 166965.32194728905,
+      "cryptoValue": 10898.413118309072,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T20:58:35.604Z",
+      "totalValue": 166957.42288245918,
+      "cryptoValue": 10890.514053479219,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T21:58:35.610Z",
+      "totalValue": 166946.73343052686,
+      "cryptoValue": 10879.82460154689,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T22:58:35.609Z",
+      "totalValue": 166939.59116223713,
+      "cryptoValue": 10872.68233325716,
+      "traditionalValue": 156066.90882897997
+    },
+    {
+      "timestamp": "2026-01-10T23:58:24.390Z",
+      "totalValue": 167758.05492685898,
+      "cryptoValue": 10882.18513787897,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T00:53:24.480Z",
+      "totalValue": 167776.95732034973,
+      "cryptoValue": 10901.087531369729,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T01:57:07.949Z",
+      "totalValue": 167776.45294849382,
+      "cryptoValue": 10900.583159513832,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T02:25:07.793Z",
+      "totalValue": 167782.0967242981,
+      "cryptoValue": 10906.2269353181,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T03:55:09.207Z",
+      "totalValue": 167786.5821586185,
+      "cryptoValue": 10910.7123696385,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T04:51:55.664Z",
+      "totalValue": 167788.76279275576,
+      "cryptoValue": 10912.89300377577,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T12:55:39.283Z",
+      "totalValue": 167824.93426621341,
+      "cryptoValue": 10949.064477233402,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T13:55:39.183Z",
+      "totalValue": 167819.1658526711,
+      "cryptoValue": 10943.29606369111,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T14:55:39.359Z",
+      "totalValue": 167860.98804404837,
+      "cryptoValue": 10985.11825506837,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T15:55:39.360Z",
+      "totalValue": 167822.8835192824,
+      "cryptoValue": 10947.013730302377,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T16:59:30.177Z",
+      "totalValue": 167874.35411352068,
+      "cryptoValue": 10998.484324540681,
+      "traditionalValue": 156875.86978898
+    },
+    {
+      "timestamp": "2026-01-11T17:24:33.225Z",
+      "totalValue": 167867.39438036107,
+      "cryptoValue": 10991.524591381069,
+      "traditionalValue": 156875.86978898
+    }
+  ],
+  "daily": [
+    {
+      "date": "2026-01-09",
+      "totalValue": 166953.83888852678,
+      "cryptoValue": 10887.96982419678,
+      "traditionalValue": 156065.86906432998,
+      "holdings": {
+        "BRK.B": {
+          "quantity": 18.898,
+          "price": 499.17999,
+          "value": 9433.50345102,
+          "type": "stock"
+        },
+        "SPAXX": {
+          "quantity": 22.94,
+          "price": 1,
+          "value": 22.94,
+          "type": "cash"
+        },
+        "MSFT": {
+          "quantity": 22.841,
+          "price": 479.20001,
+          "value": 10945.40742841,
+          "type": "stock"
+        },
+        "NVDA": {
+          "quantity": 72.49,
+          "price": 184.85001,
+          "value": 13399.777224899999,
+          "type": "stock"
+        },
+        "PRCOX": {
+          "quantity": 1770.176,
+          "price": 67.96,
+          "value": 120301.16095999998,
+          "type": "mutual_fund"
+        },
+        "RZLV": {
+          "quantity": 532,
+          "price": 3.69,
+          "value": 1963.08,
+          "type": "stock"
+        },
+        "BTC": {
+          "quantity": 0.08771468,
+          "price": 90451.36,
+          "value": 7933.9120979648005,
+          "type": "crypto"
+        },
+        "ETH": {
+          "quantity": 0.388957607,
+          "price": 3081.14,
+          "value": 1198.4328412319799,
+          "type": "crypto"
+        },
+        "SOL": {
+          "quantity": 12.93278,
+          "price": 135.75,
+          "value": 1755.624885,
+          "type": "crypto"
+        }
+      }
+    },
+    {
+      "date": "2026-01-10",
+      "totalValue": 167764.67698499595,
+      "cryptoValue": 10888.80719601596,
+      "traditionalValue": 156875.86978898,
+      "holdings": {
+        "BTC": {
+          "quantity": 0.08771468,
+          "price": 90422.95,
+          "value": 7931.420123906,
+          "type": "crypto"
+        },
+        "ETH": {
+          "quantity": 0.389031817,
+          "price": 3083.88,
+          "value": 1199.72743980996,
+          "type": "crypto"
+        },
+        "SOL": {
+          "quantity": 12.938238,
+          "price": 135.85,
+          "value": 1757.6596322999999,
+          "type": "crypto"
+        },
+        "BRK.B": {
+          "quantity": 18.898,
+          "price": 499.10001,
+          "value": 9431.99198898,
+          "type": "stock"
+        },
+        "SPAXX": {
+          "quantity": 22.94,
+          "price": 1,
+          "value": 22.94,
+          "type": "cash"
+        },
+        "MSFT": {
+          "quantity": 22.841,
+          "price": 479.28,
+          "value": 10947.23448,
+          "type": "stock"
+        },
+        "NVDA": {
+          "quantity": 72.49,
+          "price": 184.86,
+          "value": 13400.5014,
+          "type": "stock"
+        },
+        "PRCOX": {
+          "quantity": 1770.176,
+          "price": 68.42,
+          "value": 121115.44192,
+          "type": "mutual_fund"
+        },
+        "RZLV": {
+          "quantity": 532,
+          "price": 3.68,
+          "value": 1957.76,
+          "type": "stock"
+        }
+      }
+    }
+  ]
+}
