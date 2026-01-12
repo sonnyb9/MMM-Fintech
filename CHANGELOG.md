@@ -22,6 +22,7 @@ All notable changes to MMM-Fintech are documented in this file.
 
 ### Fixed
 - Chart Y-axis now uses fewer ticks (max 4) with dynamic precision to avoid duplicate labels when value range is small
+- Ticker animation now starts paused and only runs after content is ready, fixing delayed scroll start when charts are enabled
 
 ## [0.8.0] - 2026-01-09
 

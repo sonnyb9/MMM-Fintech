@@ -258,9 +258,10 @@ Module.register("MMM-Fintech", {
     }
 
     var self = this;
+    var delay = this.config.showCharts ? 500 : 100;
     setTimeout(function () {
       self.startTickerAnimation();
-    }, 100);
+    }, delay);
 
     return wrapper;
   },
@@ -303,6 +304,7 @@ Module.register("MMM-Fintech", {
     var tracks = document.querySelectorAll(".mmm-fintech-ticker-track, .mmm-fintech-ticker-track-clone");
     tracks.forEach(function(t) {
       t.style.animationDuration = duration + "s";
+      t.classList.add("running");
     });
   },
 
