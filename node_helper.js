@@ -40,6 +40,38 @@ module.exports = NodeHelper.create({
     this.lastError = null;
   },
 
+
+  calculateTotalChange24h: function(holdings, totalValue, cryptoAsForex) {
+    if (!holdings || holdings.length === 0 || totalValue <= 0) {
+      return null;
+    }
+    var weightedSum = 0;
+    var includedValue = 0;
+    cryptoAsForex = cryptoAsForex || [];
+    for (var i = 0; i < holdings.length; i++) {
+      var h = holdings[i];
+      if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+        continue;
+      }
+      if (h.value && h.change24h !== null && h.change24h !== undefined) {
+        weightedSum += h.value * h.change24h;
+        includedValue += h.value;
+      }
+    }
+    if (includedValue <= 0) {
+      return null;
+    }
+    return weightedSum / includedValue;
+  },
+
+  getCurrentMarketStatus: function() {
+    return {
+      stock: this.canUpdateAssetType("stock"),
+      etf: this.canUpdateAssetType("etf"),
+      mutual_fund: this.canUpdateAssetType("mutual_fund"),
+      forex: this.canUpdateAssetType("forex")
+    };
+  },
   socketNotificationReceived: function(notification, payload) {
     if (notification === "MMM-FINTECH_INIT") {
       this.config = payload.config;
@@ -739,6 +771,8 @@ module.exports = NodeHelper.create({
         totalValue: totalValue,
         totalCostBasis: totalCostBasis,
         totalGainLossPercent: totalGainLossPercent,
+        totalChange24h: this.calculateTotalChange24h(allHoldings, totalValue, this.config.cryptoAsForex),
+        marketStatus: this.getCurrentMarketStatus(),
         conversionRate: this.conversionRate,
         currency: this.config.currency || "USD",
         lastUpdated: new Date().toISOString(),
@@ -875,6 +909,8 @@ module.exports = NodeHelper.create({
       cache.totalValue = totalValue;
       cache.totalCostBasis = totalCostBasis;
       cache.totalGainLossPercent = totalGainLossPercent;
+      cache.totalChange24h = this.calculateTotalChange24h(cache.holdings, totalValue, this.config.cryptoAsForex);
+      cache.marketStatus = this.getCurrentMarketStatus();
       cache.conversionRate = this.conversionRate;
       cache.currency = this.config.currency || "USD";
       cache.lastPriceUpdate = new Date().toISOString();

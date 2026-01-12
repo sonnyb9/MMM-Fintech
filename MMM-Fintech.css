@@ -243,3 +243,85 @@
   opacity: 0.7;
   margin-bottom: 5px;
 }
+
+/* ===== Ticker Mode Styles ===== */
+
+.mmm-fintech-ticker-wrapper {
+  display: block;
+  width: 100%;
+  padding: 0;
+}
+
+.mmm-fintech-ticker-container {
+  width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+  position: relative;
+  padding: 10px 0;
+}
+
+.mmm-fintech-ticker-track {
+  display: inline-block;
+  white-space: nowrap;
+  animation: ticker-scroll 30s linear infinite;
+  padding-right: 50px;
+}
+
+.mmm-fintech-ticker-track-clone {
+  animation: ticker-scroll 30s linear infinite;
+}
+
+@keyframes ticker-scroll {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-100%);
+  }
+}
+
+.mmm-fintech-ticker-item {
+  display: inline-block;
+  margin-right: 40px;
+  font-size: 1.1em;
+}
+
+.mmm-fintech-ticker-total {
+  font-weight: bold;
+  margin-right: 60px;
+}
+
+.mmm-fintech-ticker-item .ticker-symbol {
+  opacity: 0.9;
+  margin-right: 5px;
+}
+
+.mmm-fintech-ticker-item .ticker-price {
+  font-family: monospace;
+  margin-right: 8px;
+}
+
+.mmm-fintech-ticker-item .ticker-change {
+  font-family: monospace;
+}
+
+.mmm-fintech-ticker-item .ticker-change.positive {
+  color: #5f5;
+}
+
+.mmm-fintech-ticker-item .ticker-change.negative {
+  color: #f55;
+}
+
+.mmm-fintech-ticker-item .ticker-closed {
+  color: #f55;
+  font-size: 0.85em;
+  margin-left: 5px;
+  opacity: 0.9;
+}
+
+/* Ticker mode chart adjustments */
+.mmm-fintech-ticker-wrapper .mmm-fintech-chart-section {
+  margin-top: 20px;
+  border-top: none;
+}

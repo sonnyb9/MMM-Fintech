@@ -2,6 +2,24 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.8.1] - 2026-01-12
+
+### Added
+- **Ticker Display Mode**: Horizontal scrolling ticker for TV/landscape viewing
+  - `displayMode: "ticker"` config option
+  - `tickerSpeed` - configurable scroll speed (pixels/second)
+  - `tickerPause` - optional pause duration per item
+  - Portfolio total shown first with value-weighted 24h change
+  - Each holding shows symbol, price, and change percentage
+  - Green/red color coding for gains/losses
+  - `(Closed)` indicator for non-crypto assets when markets are closed
+  - Charts still supported alongside ticker mode
+- **Market Status Tracking**: Backend now tracks open/closed status for each asset type
+- **Total 24h Change**: Value-weighted portfolio change percentage calculation
+
+### Changed
+- Data payload now includes `totalChange24h` and `marketStatus` fields
+
 ## [0.8.0] - 2026-01-09
 
 ### Added
