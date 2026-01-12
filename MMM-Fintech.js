@@ -109,6 +109,15 @@ Module.register("MMM-Fintech", {
     }, 5000);
   },
 
+  notificationReceived: function (notification, payload, sender) {
+    if (notification === "NEW_PAGE" && this.config.displayMode === "ticker") {
+      var self = this;
+      setTimeout(function () {
+        self.startTickerAnimation();
+      }, 200);
+    }
+  },
+
   getStyles: function () {
     return ["MMM-Fintech.css"];
   },
@@ -258,10 +267,9 @@ Module.register("MMM-Fintech", {
     }
 
     var self = this;
-    var delay = this.config.showCharts ? 500 : 100;
     setTimeout(function () {
       self.startTickerAnimation();
-    }, delay);
+    }, 100);
 
     return wrapper;
   },
@@ -298,13 +306,16 @@ Module.register("MMM-Fintech", {
     }
 
     var trackWidth = track.scrollWidth;
+    if (trackWidth === 0) {
+      return;
+    }
+
     var speed = this.config.tickerSpeed;
     var duration = (trackWidth / speed);
 
     var tracks = document.querySelectorAll(".mmm-fintech-ticker-track, .mmm-fintech-ticker-track-clone");
     tracks.forEach(function(t) {
       t.style.animationDuration = duration + "s";
-      t.classList.add("running");
     });
   },
 

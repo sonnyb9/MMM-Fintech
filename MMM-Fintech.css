@@ -264,18 +264,11 @@
   display: inline-block;
   white-space: nowrap;
   animation: ticker-scroll 30s linear infinite;
-  animation-play-state: paused;
   padding-right: 50px;
 }
 
 .mmm-fintech-ticker-track-clone {
   animation: ticker-scroll 30s linear infinite;
-  animation-play-state: paused;
-}
-
-.mmm-fintech-ticker-track.running,
-.mmm-fintech-ticker-track-clone.running {
-  animation-play-state: running;
 }
 
 @keyframes ticker-scroll {
