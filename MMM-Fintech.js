@@ -834,11 +834,18 @@ Module.register("MMM-Fintech", {
             },
             ticks: {
               color: "#999",
-              callback: function (value) {
+              maxTicksLimit: 4,
+              callback: function (value, index, ticks) {
+                var range = ticks[0].value - ticks[ticks.length - 1].value;
+                var absRange = Math.abs(range);
                 if (value >= 1000) {
-                  return "$" + (value / 1000).toFixed(0) + "k";
+                  var kValue = value / 1000;
+                  if (absRange < 2000) {
+                    return "$" + kValue.toFixed(1) + "k";
+                  }
+                  return "$" + kValue.toFixed(0) + "k";
                 }
-                return "$" + value;
+                return "$" + value.toFixed(0);
               },
               font: {
                 size: 10

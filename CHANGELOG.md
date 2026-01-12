@@ -20,6 +20,9 @@ All notable changes to MMM-Fintech are documented in this file.
 ### Changed
 - Data payload now includes `totalChange24h` and `marketStatus` fields
 
+### Fixed
+- Chart Y-axis now uses fewer ticks (max 4) with dynamic precision to avoid duplicate labels when value range is small
+
 ## [0.8.0] - 2026-01-09
 
 ### Added
