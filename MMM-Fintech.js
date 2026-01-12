@@ -254,6 +254,25 @@ Module.register("MMM-Fintech", {
       tickerTrack.appendChild(item);
     }
 
+    var forexToShow = this.getDisplayForex();
+    if (this.config.showForex && forexToShow.length > 0) {
+      for (var j = 0; j < forexToShow.length; j++) {
+        var fx = forexToShow[j];
+        var fxItem = document.createElement("span");
+        fxItem.className = "mmm-fintech-ticker-item mmm-fintech-ticker-forex";
+
+        var fxChange = fx.change24h || 0;
+        var fxChangeClass = fxChange > 0 ? "positive" : fxChange < 0 ? "negative" : "";
+        var fxChangeStr = this.formatChangePercent(fxChange);
+
+        fxItem.innerHTML = "<span class='ticker-symbol'>" + fx.pair + ":</span> " +
+          "<span class='ticker-price'>" + this.formatForexRate(fx.rate) + "</span> " +
+          "<span class='ticker-change " + fxChangeClass + "'>" + fxChangeStr + "</span>";
+
+        tickerTrack.appendChild(fxItem);
+      }
+    }
+
     var tickerContent = tickerTrack.cloneNode(true);
     tickerContent.className = "mmm-fintech-ticker-track mmm-fintech-ticker-track-clone";
     

@@ -24,6 +24,9 @@ All notable changes to MMM-Fintech are documented in this file.
 - Chart Y-axis now uses fewer ticks (max 4) with dynamic precision to avoid duplicate labels when value range is small
 - Ticker animation now recalculates on page change (MMM-pages compatibility) to ensure scrolling starts when module becomes visible
 
+### Added
+- Forex pairs now display in ticker mode (when `showForex: true`)
+
 ## [0.8.0] - 2026-01-09
 
 ### Added
