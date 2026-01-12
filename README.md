@@ -226,6 +226,9 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 |--------|---------|-------------|
 | `title` | `"Portfolio"` | Header text |
 | `fontSize` | `100` | Font size as percentage (e.g., 80 for smaller, 120 for larger) |
+| `displayMode` | `"table"` | Display mode: `"table"` (default) or `"ticker"` for horizontal scrolling |
+| `tickerSpeed` | `50` | Ticker scroll speed in pixels per second |
+| `tickerPause` | `0` | Milliseconds to pause on each item (0 = no pause) |
 | `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
 | `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
 | `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
@@ -356,6 +359,42 @@ config: {
   chartMode: "separate"
 }
 ```
+
+## Ticker Mode
+
+Ticker mode displays holdings as a horizontal scrolling ticker bar, ideal for TV displays or landscape orientations.
+
+**Features:**
+- Portfolio total shown first with value-weighted 24h change
+- Each holding shows: Symbol, Price, Change %
+- Green/red color coding for positive/negative changes
+- `(Closed)` indicator for non-crypto assets when markets are closed
+- Charts can still be displayed alongside the ticker
+
+**Basic Ticker Configuration:**
+```javascript
+config: {
+  displayMode: "ticker",
+  tickerSpeed: 50,      // pixels per second
+  tickerPause: 0        // no pause between items
+}
+```
+
+**Ticker with Chart:**
+```javascript
+config: {
+  displayMode: "ticker",
+  tickerSpeed: 40,
+  showCharts: true,
+  chartMode: "combined",
+  chartPeriod: "1W"
+}
+```
+
+**Market Status:**
+- Crypto: Always shows live 24h change (24/7 market)
+- Stocks/ETFs/Mutual Funds: Shows change since previous close during market hours; shows last trading day's change with `(Closed)` indicator when markets are closed
+- Forex: Shows change since previous close during trading hours (Sun 5pm - Fri 5pm ET)
 
 ## Portfolio Charts
 
