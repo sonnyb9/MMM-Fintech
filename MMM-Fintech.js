@@ -703,7 +703,7 @@ Module.register("MMM-Fintech", {
         btn.className = "mmm-fintech-period-btn";
         btn.innerHTML = period;
         btn.dataset.period = period;
-        if (period === this.selectedPeriod) {
+        if (period.toLowerCase() === this.selectedPeriod.toLowerCase()) {
           btn.classList.add("active");
         }
         periodSelector.appendChild(btn);
