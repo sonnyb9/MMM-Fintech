@@ -6,24 +6,18 @@ cdp_api_key.json
 .env
 *.log
 .cache/
-test-coinbase.js
-test-twelvedata.js
 manual-holdings.json
 AI-CONTEXT.md
 DEV.md
 QA-TEST-PLAN-v0.8.0.md
 cache.json
 history.json
+history-backup.json
 
 # SnapTrade
 snaptrade-credentials.enc
 snaptrade-debug-accounts.js
 snaptrade-connect.js
-test-snaptrade.js
-test-snaptrade-provider.js
-test-full-sync.js
-test-costbasis.js
-test-history.js
 
 # Local patch artifacts
 *.patch

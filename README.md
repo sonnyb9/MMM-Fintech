@@ -474,12 +474,32 @@ rm ~/MagicMirror/modules/MMM-Fintech/cache.json
 pm2 restart magicmirror
 ```
 
-### Test Provider Connections
+### Diagnostic Test Scripts
+
+The module includes test scripts to verify provider connections and data flow:
 
 ```bash
 cd ~/MagicMirror/modules/MMM-Fintech
-node test-coinbase.js      # Test Coinbase
-node test-twelvedata.js    # Test Twelve Data
+```
+
+| Script | Purpose | When to Use |
+|--------|---------|-------------|
+| `test-snaptrade-provider.js` | Tests SnapTrade initialization and holdings fetch | After SnapTrade setup to verify credentials and brokerage connections |
+| `test-twelvedata.js` | Tests Twelve Data API for stocks, mutual funds, and forex | After Twelve Data setup to verify API key and symbol availability |
+| `test-full-sync.js` | Tests complete holdings sync across all providers | When holdings aren't appearing or to debug provider priority |
+| `test-costbasis.js` | Tests cost basis and gain/loss data from SnapTrade | When G/L column shows incorrect values or dashes |
+
+**Example usage:**
+
+```bash
+# Verify SnapTrade is working
+node test-snaptrade-provider.js
+
+# Check if Twelve Data can fetch your symbols
+node test-twelvedata.js
+
+# Debug the full sync process
+node test-full-sync.js
 ```
 
 ### Common Errors
