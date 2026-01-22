@@ -13,6 +13,7 @@ Module.register("MMM-Fintech", {
     chartPeriod: "1M",
     showPeriodSelector: false,
     historyRetention: 1825,
+    hourlyRetention: 720,
     cryptoAsForex: [],
     sortBy: "value",
     title: "Portfolio",
@@ -778,6 +779,7 @@ Module.register("MMM-Fintech", {
   },
 
   renderChart: function (canvasId, data, valueKey, label, isCrypto) {
+    var self = this;
     var canvas = document.getElementById(canvasId);
     if (!canvas) {
       return;
@@ -793,12 +795,18 @@ Module.register("MMM-Fintech", {
       var point = data[i];
       if (isHourly) {
         var dt = new Date(point.timestamp);
-        labels.push(dt.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }));
+        labels.push(this.formatChartLabel(dt, data.length, true));
       } else {
-        labels.push(this.formatChartDate(point.date));
+        labels.push(this.formatChartLabel(new Date(point.date), data.length, false));
       }
       values.push(point[valueKey] || 0);
     }
+
+    var firstValue = values[0] || 0;
+    var lastValue = values[values.length - 1] || 0;
+    var periodChange = firstValue > 0 ? ((lastValue - firstValue) / firstValue) * 100 : 0;
+
+    var costBasis = this.getCostBasisForChart(valueKey, isCrypto);
 
     var gradientColor = isCrypto ? "rgba(255, 165, 0, " : "rgba(100, 200, 100, ";
     var lineColor = isCrypto ? "rgba(255, 165, 0, 1)" : "rgba(100, 200, 100, 1)";
@@ -812,25 +820,49 @@ Module.register("MMM-Fintech", {
       existingChart.destroy();
     }
 
+    var datasets = [{
+      label: label,
+      data: values,
+      fill: true,
+      backgroundColor: gradient,
+      borderColor: lineColor,
+      borderWidth: 2,
+      tension: 0.3,
+      pointRadius: 0,
+      pointHoverRadius: 4,
+      order: 1
+    }];
+
+    if (costBasis > 0) {
+      var costBasisData = new Array(values.length).fill(costBasis);
+      datasets.push({
+        label: "Cost Basis",
+        data: costBasisData,
+        fill: false,
+        borderColor: "rgba(255, 255, 255, 0.4)",
+        borderWidth: 1,
+        borderDash: [5, 5],
+        pointRadius: 0,
+        pointHoverRadius: 0,
+        order: 2
+      });
+    }
+
     var newChart = new Chart(ctx, {
       type: "line",
       data: {
         labels: labels,
-        datasets: [{
-          label: label,
-          data: values,
-          fill: true,
-          backgroundColor: gradient,
-          borderColor: lineColor,
-          borderWidth: 2,
-          tension: 0.3,
-          pointRadius: 0,
-          pointHoverRadius: 4
-        }]
+        datasets: datasets
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
+        layout: {
+          padding: {
+            top: 25,
+            right: 10
+          }
+        },
         plugins: {
           legend: {
             display: false
@@ -838,6 +870,9 @@ Module.register("MMM-Fintech", {
           tooltip: {
             mode: "index",
             intersect: false,
+            filter: function(tooltipItem) {
+              return tooltipItem.datasetIndex === 0;
+            },
             callbacks: {
               label: function (context) {
                 return "$" + context.parsed.y.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -852,35 +887,32 @@ Module.register("MMM-Fintech", {
               display: false
             },
             ticks: {
-              color: "#999",
-              maxTicksLimit: 6,
+              color: "#888",
+              maxTicksLimit: self.getMaxTicksForPeriod(data.length, isHourly),
+              maxRotation: 0,
               font: {
-                size: 10
+                size: 9
               }
             }
           },
           y: {
             display: true,
             grid: {
-              color: "rgba(255, 255, 255, 0.1)"
+              color: "rgba(255, 255, 255, 0.06)",
+              drawTicks: false
+            },
+            border: {
+              display: false
             },
             ticks: {
-              color: "#999",
-              maxTicksLimit: 4,
-              callback: function (value, index, ticks) {
-                var range = ticks[0].value - ticks[ticks.length - 1].value;
-                var absRange = Math.abs(range);
-                if (value >= 1000) {
-                  var kValue = value / 1000;
-                  if (absRange < 2000) {
-                    return "$" + kValue.toFixed(1) + "k";
-                  }
-                  return "$" + kValue.toFixed(0) + "k";
-                }
-                return "$" + value.toFixed(0);
+              color: "#888",
+              maxTicksLimit: 5,
+              padding: 8,
+              callback: function (value) {
+                return self.formatYAxisValue(value);
               },
               font: {
-                size: 10
+                size: 9
               }
             }
           }
@@ -890,7 +922,16 @@ Module.register("MMM-Fintech", {
           axis: "x",
           intersect: false
         }
-      }
+      },
+      plugins: [{
+        id: "periodChangeLabel",
+        afterDraw: function(chart) {
+          self.drawPeriodChangeLabel(chart, periodChange);
+          if (costBasis > 0) {
+            self.drawCostBasisLabel(chart, costBasis);
+          }
+        }
+      }]
     });
 
     if (isCrypto) {
@@ -898,6 +939,107 @@ Module.register("MMM-Fintech", {
     } else {
       this.chartInstance = newChart;
     }
+  },
+
+  getCostBasisForChart: function(valueKey, isCrypto) {
+    if (!this.holdings || this.holdings.length === 0) {
+      return 0;
+    }
+
+    var cryptoAsForex = this.config.cryptoAsForex || [];
+    var totalCostBasis = 0;
+    var cryptoCostBasis = 0;
+    var traditionalCostBasis = 0;
+
+    for (var i = 0; i < this.holdings.length; i++) {
+      var h = this.holdings[i];
+      if (h.type === "crypto" && cryptoAsForex.indexOf(h.symbol) !== -1) {
+        continue;
+      }
+      var cb = h.costBasis || 0;
+      if (h.type === "crypto") {
+        cryptoCostBasis += cb;
+      } else {
+        traditionalCostBasis += cb;
+      }
+      totalCostBasis += cb;
+    }
+
+    if (valueKey === "totalValue") {
+      return totalCostBasis;
+    } else if (valueKey === "cryptoValue" || isCrypto) {
+      return cryptoCostBasis;
+    } else {
+      return traditionalCostBasis;
+    }
+  },
+
+  formatChartLabel: function(date, dataLength, isHourly) {
+    if (isHourly) {
+      if (dataLength > 48) {
+        return date.toLocaleDateString([], { month: "short", day: "numeric" }) + " " +
+               date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      }
+      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    }
+    if (dataLength > 90) {
+      return date.toLocaleDateString([], { month: "short", year: "2-digit" });
+    }
+    return (date.getMonth() + 1) + "/" + date.getDate();
+  },
+
+  getMaxTicksForPeriod: function(dataLength, isHourly) {
+    if (dataLength <= 24) return 6;
+    if (dataLength <= 48) return 6;
+    if (dataLength <= 168) return 7;
+    if (dataLength <= 720) return 6;
+    return 6;
+  },
+
+  formatYAxisValue: function(value) {
+    if (value >= 1000000) {
+      return "$" + (value / 1000000).toFixed(1) + "M";
+    }
+    if (value >= 1000) {
+      return "$" + (value / 1000).toFixed(0) + "k";
+    }
+    return "$" + value.toFixed(0);
+  },
+
+  drawPeriodChangeLabel: function(chart, periodChange) {
+    var ctx = chart.ctx;
+    var chartArea = chart.chartArea;
+
+    var changeText = (periodChange >= 0 ? "+" : "") + periodChange.toFixed(2) + "%";
+    var changeColor = periodChange >= 0 ? "rgba(100, 200, 100, 1)" : "rgba(255, 100, 100, 1)";
+
+    ctx.save();
+    ctx.font = "bold 11px Arial, sans-serif";
+    ctx.fillStyle = changeColor;
+    ctx.textAlign = "right";
+    ctx.textBaseline = "top";
+    ctx.fillText(changeText, chartArea.right, chartArea.top - 18);
+    ctx.restore();
+  },
+
+  drawCostBasisLabel: function(chart, costBasis) {
+    var ctx = chart.ctx;
+    var chartArea = chart.chartArea;
+    var yScale = chart.scales.y;
+
+    var yPos = yScale.getPixelForValue(costBasis);
+
+    if (yPos < chartArea.top || yPos > chartArea.bottom) {
+      return;
+    }
+
+    ctx.save();
+    ctx.font = "9px Arial, sans-serif";
+    ctx.fillStyle = "rgba(255, 255, 255, 0.5)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("Cost", chartArea.left + 4, yPos - 2);
+    ctx.restore();
   },
 
   formatChartDate: function (dateStr) {

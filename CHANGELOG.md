@@ -2,6 +2,28 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.8.2] - 2026-01-22
+
+### Added
+- **Extended Hourly Retention**: Configurable via `hourlyRetention` (default: 720 hours / 30 days)
+  - 1W period now uses hourly data for higher granularity
+  - 1M period uses hourly data when available (falls back to daily)
+- **Cost Basis Line on Charts**: Dashed horizontal line showing total cost basis
+  - Displays "Cost" label on the chart
+  - Correctly calculates cost basis per chart mode (combined/separate/traditional)
+- **Period Change Label**: Shows percentage change over displayed period
+  - Color-coded green (positive) / red (negative)
+  - Positioned in top-right of chart area
+- **Improved Chart Tick Marks**: Cleaner Y-axis formatting
+  - Support for million-dollar values ($1.2M)
+  - Better tick distribution (5 ticks max)
+  - Subtler grid lines
+
+### Changed
+- Hourly retention increased from 48 hours to 720 hours (30 days) by default
+- Chart labels now adapt to data density (include dates for longer periods)
+- Tooltip now filters out cost basis line (shows only portfolio value)
+
 ## [0.8.1] - 2026-01-12
 
 ### Added
@@ -41,7 +63,7 @@ All notable changes to MMM-Fintech are documented in this file.
   - `chartPeriod` - "1D" / "1W" / "1M" / "3M" / "1Y" / "All"
   - `showPeriodSelector` - Show period buttons for touch devices (default: false)
   - `historyRetention` - Days to retain daily history (default: 1825 / 5 years)
-- **History Storage**: Local `history.json` file for snapshot data
+- **History Storage**: New `lib/history-manager.js` module and `history.json` file for snapshot data
   - ~600 bytes per snapshot (10 holdings)
   - ~250 KB after 1 year, ~1.1 MB after 5 years
 

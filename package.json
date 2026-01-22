@@ -1,6 +1,6 @@
 {
   "name": "mmm-fintech",
-  "version": "0.8.1",
+  "version": "0.8.2",
   "description": "MagicMirror² module for consolidated financial holdings (crypto and brokerage)",
   "author": "sonnyb9",
   "license": "MIT",

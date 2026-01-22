@@ -249,7 +249,8 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 | `chartMode` | `"combined"` | Chart mode: `"combined"`, `"separate"`, or `"exclude-crypto"` |
 | `chartPeriod` | `"1M"` | Default chart period: `"1D"`, `"1W"`, `"1M"`, `"3M"`, `"1Y"`, `"All"` |
 | `showPeriodSelector` | `false` | Show period selector buttons (for touch devices) |
-| `historyRetention` | `1825` | Days to retain chart history (default: 5 years) |
+| `historyRetention` | `1825` | Days to retain daily chart history (default: 5 years) |
+| `hourlyRetention` | `720` | Hours to retain hourly chart data (default: 30 days) |
 | `marketHours` | See below | Market-hour polling schedules by asset type |
 
 ## Market Hours Scheduling
@@ -407,17 +408,25 @@ The module can display portfolio value charts over time.
 
 **Time Periods:**
 - `1D` - Last 24 hours (uses hourly snapshots)
-- `1W`, `1M`, `3M`, `1Y`, `All` - Use daily snapshots
+- `1W` - Last 7 days (uses hourly snapshots for higher granularity)
+- `1M` - Last 30 days (uses hourly snapshots if available, falls back to daily)
+- `3M`, `1Y`, `All` - Use daily snapshots
+
+**Chart Features:**
+- **Cost Basis Line**: Dashed horizontal line showing your total cost basis (requires cost basis data from SnapTrade or manual holdings)
+- **Period Change Label**: Shows the percentage change over the displayed period (e.g., "+5.23%") in green/red
+- **Improved Tick Marks**: Cleaner Y-axis formatting with appropriate precision
 
 **Data Collection:**
-- Hourly snapshots recorded during each price update (rolling 48 hours)
-- Daily snapshots recorded during the morning holdings sync
+- Hourly snapshots recorded during each price update (default: 30 days / 720 hours retention)
+- Daily snapshots recorded during the morning holdings sync (default: 5 years retention)
 - Data starts fresh from when you enable charts (no historical backfill)
 
 **Storage Requirements (10 holdings):**
-- ~600 bytes per snapshot
-- ~250 KB after 1 year
-- ~1.1 MB after 5 years
+- ~120 bytes per hourly snapshot
+- ~400 bytes per daily snapshot
+- ~100 KB for 30 days of hourly data
+- ~150 KB per year of daily data
 
 ## Scheduling
 
@@ -437,6 +446,19 @@ The module can display portfolio value charts over time.
 
 | File | Description | Git |
 |------|-------------|-----|
+| `MMM-Fintech.js` | Frontend: DOM rendering, socket handling | Tracked |
+| `node_helper.js` | Backend: Provider coordination, scheduling, caching | Tracked |
+| `MMM-Fintech.css` | Module styling | Tracked |
+| `providers/index.js` | Factory functions for provider creation | Tracked |
+| `providers/base.js` | Base class with shared utilities | Tracked |
+| `providers/coinbase.js` | Coinbase CDP API provider (crypto) | Tracked |
+| `providers/twelvedata.js` | Twelve Data API provider (stocks/ETFs/forex) | Tracked |
+| `providers/snaptrade.js` | SnapTrade API provider (brokerage holdings) | Tracked |
+| `lib/history-manager.js` | Chart history snapshot management | Tracked |
+| `setup-credentials.js` | CLI tool to encrypt Coinbase CDP API key | Tracked |
+| `setup-twelvedata.js` | CLI tool to encrypt Twelve Data API key | Tracked |
+| `setup-snaptrade.js` | CLI tool to encrypt SnapTrade credentials | Tracked |
+| `snaptrade-connect.js` | CLI tool to generate brokerage connection URL | Tracked |
 | `cdp_api_key.json` | Original Coinbase key (delete after setup) | Ignored |
 | `cdp-credentials.enc` | Encrypted Coinbase credentials | Ignored |
 | `twelvedata-credentials.enc` | Encrypted Twelve Data credentials | Ignored |
