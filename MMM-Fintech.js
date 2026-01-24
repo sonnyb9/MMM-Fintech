@@ -833,6 +833,14 @@ Module.register("MMM-Fintech", {
       order: 1
     }];
 
+    var minValue = Math.min.apply(null, values);
+    var maxValue = Math.max.apply(null, values);
+    var valueRange = maxValue - minValue;
+    var padding = valueRange * 0.1;
+    if (padding < 1) padding = maxValue * 0.02;
+    var yMin = minValue - padding;
+    var yMax = maxValue + padding;
+
     if (costBasis > 0) {
       var costBasisData = new Array(values.length).fill(costBasis);
       datasets.push({
@@ -897,6 +905,8 @@ Module.register("MMM-Fintech", {
           },
           y: {
             display: true,
+            min: yMin,
+            max: yMax,
             grid: {
               color: "rgba(255, 255, 255, 0.06)",
               drawTicks: false
