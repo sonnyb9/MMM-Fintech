@@ -85,6 +85,10 @@ module.exports = NodeHelper.create({
       this.schedulePriceUpdates();
       this.scheduleNextHoldingsSync();
     }
+
+    if (notification === "MMM-FINTECH_GET_HISTORY") {
+      this.sendHistoryDataForPeriod(payload.period);
+    }
   },
 
   initProviders: function() {
@@ -649,6 +653,15 @@ module.exports = NodeHelper.create({
     var period = this.config.chartPeriod || "1M";
     var data = this.historyManager.getChartData(period);
     this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data });
+  },
+
+  sendHistoryDataForPeriod: function(period) {
+    if (!this.historyManager) {
+      return;
+    }
+
+    var data = this.historyManager.getChartData(period);
+    this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data, period: period });
   },
 
   syncHoldings: async function() {

@@ -707,6 +707,7 @@ Module.register("MMM-Fintech", {
         if (period.toLowerCase() === this.selectedPeriod.toLowerCase()) {
           btn.classList.add("active");
         }
+        btn.addEventListener("click", this.handlePeriodClick.bind(this));
         periodSelector.appendChild(btn);
       }
       section.appendChild(periodSelector);
@@ -1059,6 +1060,25 @@ Module.register("MMM-Fintech", {
     return month + "/" + day;
   },
 
+  handlePeriodClick: function(event) {
+    var period = event.target.dataset.period;
+    if (!period || period.toLowerCase() === this.selectedPeriod.toLowerCase()) {
+      return;
+    }
+
+    this.selectedPeriod = period;
+
+    var buttons = document.querySelectorAll(".mmm-fintech-period-btn");
+    buttons.forEach(function(btn) {
+      btn.classList.remove("active");
+      if (btn.dataset.period === period) {
+        btn.classList.add("active");
+      }
+    });
+
+    this.sendSocketNotification("MMM-FINTECH_GET_HISTORY", { period: period });
+  },
+
   socketNotificationReceived: function (notification, payload) {
     if (notification === "MMM-FINTECH_DATA") {
       this.holdings = payload.holdings || [];
@@ -1079,8 +1099,11 @@ Module.register("MMM-Fintech", {
 
     if (notification === "MMM-FINTECH_HISTORY") {
       this.chartData = payload.data || [];
+      if (payload.period) {
+        this.selectedPeriod = payload.period;
+      }
       if (this.config.showCharts) {
-        this.updateDom();
+        this.renderCharts();
       }
     }
   }
