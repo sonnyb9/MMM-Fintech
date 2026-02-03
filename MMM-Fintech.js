@@ -93,6 +93,7 @@ Module.register("MMM-Fintech", {
     this.hasError = false;
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
+    this.snaptradeAuthError = false;
     this.chartData = [];
     this.chartInstance = null;
     this.cryptoChartInstance = null;
@@ -590,6 +591,11 @@ Module.register("MMM-Fintech", {
   getWarnings: function () {
     var warnings = [];
     var severity = "warning";
+
+    if (this.snaptradeAuthError) {
+      warnings.push("⚠ SnapTrade connection expired - run 'node snaptrade-connect.js' to reconnect");
+      severity = "critical";
+    }
 
     if (this.invalidSymbols && this.invalidSymbols.length > 0) {
       if (this.invalidSymbols.length === 1) {
@@ -1093,6 +1099,7 @@ Module.register("MMM-Fintech", {
       this.hasError = payload.hasError || false;
       this.invalidSymbols = payload.invalidSymbols || [];
       this.rateLimitedSymbols = payload.rateLimitedSymbols || [];
+      this.snaptradeAuthError = payload.snaptradeAuthError || false;
       this.marketStatus = payload.marketStatus || {};
       this.updateDom();
     }

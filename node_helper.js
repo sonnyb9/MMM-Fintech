@@ -15,6 +15,7 @@ module.exports = NodeHelper.create({
     this.lastError = null;
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
+    this.snaptradeAuthError = false;
     this.providers = {};
     this.conversionRate = 1;
     this.postClosePollByType = {};
@@ -669,6 +670,7 @@ module.exports = NodeHelper.create({
     this.log("Starting holdings sync...");
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
+    this.snaptradeAuthError = false;
 
     try {
       await this.fetchConversionRate();
@@ -681,7 +683,16 @@ module.exports = NodeHelper.create({
           apiHoldings = apiHoldings.concat(snaptradeHoldings);
           this.log("Fetched " + snaptradeHoldings.length + " holdings from SnapTrade");
         } catch (error) {
-          this.logError("SNAPTRADE", "Failed to fetch holdings", error.message);
+          var statusCode = error.response && error.response.status;
+          var isAuthError = statusCode === 401 || statusCode === 403 ||
+            (error.message && (error.message.indexOf("401") !== -1 || error.message.indexOf("403") !== -1));
+
+          if (isAuthError) {
+            this.snaptradeAuthError = true;
+            this.logError("SNAPTRADE_AUTH", "SnapTrade connection expired or unauthorized", "Run 'node snaptrade-connect.js' to reconnect");
+          } else {
+            this.logError("SNAPTRADE", "Failed to fetch holdings", error.message);
+          }
         }
       }
 
@@ -795,7 +806,8 @@ module.exports = NodeHelper.create({
         manualHoldingsModTime: this.getManualHoldingsModTime(),
         hasError: this.lastError !== null,
         invalidSymbols: this.invalidSymbols,
-        rateLimitedSymbols: this.rateLimitedSymbols
+        rateLimitedSymbols: this.rateLimitedSymbols,
+        snaptradeAuthError: this.snaptradeAuthError
       };
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
