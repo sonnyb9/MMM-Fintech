@@ -117,6 +117,43 @@ class SnapTradeProvider {
     return symbolMap[symbol] || symbol;
   }
 
+  async withTimeout(promise, timeoutMs, operation) {
+    return Promise.race([
+      promise,
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`Timeout: ${operation} exceeded ${timeoutMs}ms`)), timeoutMs)
+      )
+    ]);
+  }
+
+  async withRetry(fn, operation, timeoutMs = 30000) {
+    var retryDelays = [60000, 120000, 240000]; // 1min, 2min, 4min
+    var lastError;
+
+    for (var attempt = 0; attempt <= retryDelays.length; attempt++) {
+      try {
+        console.log(`[SnapTrade] Attempt ${attempt + 1}/${retryDelays.length + 1}: ${operation}`);
+        var result = await this.withTimeout(fn(), timeoutMs, operation);
+        if (attempt > 0) {
+          console.log(`[SnapTrade] Success after ${attempt} retries`);
+        }
+        return result;
+      } catch (err) {
+        lastError = err;
+        console.error(`[SnapTrade] Attempt ${attempt + 1} failed: ${err.message}`);
+
+        if (attempt < retryDelays.length) {
+          var delayMs = retryDelays[attempt];
+          console.log(`[SnapTrade] Waiting ${delayMs / 1000}s before retry...`);
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+        }
+      }
+    }
+
+    console.error(`[SnapTrade] All retries exhausted for ${operation}`);
+    throw lastError;
+  }
+
   async fetchHoldings() {
     if (!this.client || !this.credentials) {
       throw new Error("SnapTrade provider not initialized");
@@ -126,10 +163,13 @@ class SnapTradeProvider {
     var userSecret = this.credentials.userSecret;
     var holdingsMap = {};
 
-    var accountsResp = await this.client.accountInformation.listUserAccounts({
-      userId: userId,
-      userSecret: userSecret,
-    });
+    var accountsResp = await this.withRetry(
+      () => this.client.accountInformation.listUserAccounts({
+        userId: userId,
+        userSecret: userSecret,
+      }),
+      "listUserAccounts"
+    );
 
     var accounts = accountsResp.data || [];
 
@@ -139,11 +179,14 @@ class SnapTradeProvider {
       var accountName = account.name || "Unknown";
       var institution = account.institution_name || "Unknown";
 
-      var holdingsResp = await this.client.accountInformation.getUserHoldings({
-        userId: userId,
-        userSecret: userSecret,
-        accountId: accountId,
-      });
+      var holdingsResp = await this.withRetry(
+        () => this.client.accountInformation.getUserHoldings({
+          userId: userId,
+          userSecret: userSecret,
+          accountId: accountId,
+        }),
+        `getUserHoldings(${accountName})`
+      );
 
       var positions = (holdingsResp.data && holdingsResp.data.positions) || [];
 

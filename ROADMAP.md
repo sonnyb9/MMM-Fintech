@@ -104,6 +104,14 @@ Automatic ingestion of brokerage account holdings via SnapTrade.
 
 **Key Discovery**: SnapTrade via Coinbase returns complete holdings including staked crypto (SOL, ETH), solving the CDP API limitation.
 
+- ✅ **SnapTrade Timeout & Retry Improvements** (v0.9.1)
+  - 30-second timeout per API call with `Promise.race()`
+  - Exponential backoff retry: 1 minute → 2 minutes → 4 minutes
+  - 4 total attempts (initial + 3 retries) before failure
+  - Detailed logging of all attempts and failures
+  - Footer error indicator for timeout failures
+  - Automatic recovery on next sync cycle
+
 ## ✅ Phase 3.3 - Cost Basis & Gain/Loss Tracking (Complete)
 
 **Status**: Released in v0.7.0
@@ -162,6 +170,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
+- **v0.9.1** (2026-02-10) - SnapTrade timeout & retry improvements with exponential backoff
 - **v0.9.0** (2026-02-10) - Phase 5 complete: User experience enhancements (unified setup wizard, health check)
 - **v0.8.0** (2026-01-09) - Phase 4 complete: Portfolio performance charts
 - **v0.7.0** (2026-01-08) - Phase 3.3 complete: Cost basis and gain/loss tracking

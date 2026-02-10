@@ -590,6 +590,25 @@ node test-full-sync.js
 - Normal behavior outside market hours
 - Set `marketHours.stock.enabled: false` to disable
 
+**"SnapTrade API timeout - check network/service status"**
+- SnapTrade API failed to respond within timeout period (30 seconds)
+- Module automatically retries with exponential backoff: 1min, 2min, 4min
+- After 4 total attempts (1 initial + 3 retries), error is displayed in footer
+- Check logs for detailed retry information: `pm2 logs magicmirror | grep SnapTrade`
+- Usually resolves automatically on next sync cycle
+- If persistent, check SnapTrade service status or network connectivity
+
+### API Retry & Timeout Behavior
+
+The SnapTrade provider includes robust retry logic with exponential backoff:
+
+- **Timeout**: 30 seconds per API call
+- **Retry delays**: 1 minute → 2 minutes → 4 minutes
+- **Total attempts**: 4 (initial + 3 retries)
+- **Logging**: All attempts and failures are logged with timestamps
+
+If all retries are exhausted, the module continues operation with stale data and displays a timeout warning in the footer. The error clears automatically on the next successful sync.
+
 ## Roadmap
 
 See [ROADMAP.md](ROADMAP.md) for planned features and development phases.

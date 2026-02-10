@@ -16,6 +16,7 @@ module.exports = NodeHelper.create({
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
     this.snaptradeAuthError = false;
+    this.snaptradeTimeoutError = false;
     this.providers = {};
     this.conversionRate = 1;
     this.postClosePollByType = {};
@@ -671,6 +672,7 @@ module.exports = NodeHelper.create({
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
     this.snaptradeAuthError = false;
+    this.snaptradeTimeoutError = false;
 
     try {
       await this.fetchConversionRate();
@@ -686,10 +688,14 @@ module.exports = NodeHelper.create({
           var statusCode = error.response && error.response.status;
           var isAuthError = statusCode === 401 || statusCode === 403 ||
             (error.message && (error.message.indexOf("401") !== -1 || error.message.indexOf("403") !== -1));
+          var isTimeout = error.message && (error.message.indexOf("Timeout") !== -1 || error.message.indexOf("retries exhausted") !== -1);
 
           if (isAuthError) {
             this.snaptradeAuthError = true;
             this.logError("SNAPTRADE_AUTH", "SnapTrade connection expired or unauthorized", "Run 'node snaptrade-connect.js' to reconnect");
+          } else if (isTimeout) {
+            this.snaptradeTimeoutError = true;
+            this.logError("SNAPTRADE_TIMEOUT", "SnapTrade API timeout after retries", error.message);
           } else {
             this.logError("SNAPTRADE", "Failed to fetch holdings", error.message);
           }
@@ -807,7 +813,8 @@ module.exports = NodeHelper.create({
         hasError: this.lastError !== null,
         invalidSymbols: this.invalidSymbols,
         rateLimitedSymbols: this.rateLimitedSymbols,
-        snaptradeAuthError: this.snaptradeAuthError
+        snaptradeAuthError: this.snaptradeAuthError,
+        snaptradeTimeoutError: this.snaptradeTimeoutError
       };
 
       fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
