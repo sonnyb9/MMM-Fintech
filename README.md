@@ -504,6 +504,18 @@ The module includes test scripts to verify provider connections and data flow:
 cd ~/MagicMirror/modules/MMM-Fintech
 ```
 
+#### Health Check (Recommended)
+
+**Quick health check**: Run all diagnostic tests in sequence with a summary report:
+
+```bash
+node health-check.js
+```
+
+This runs all four test scripts below and provides a pass/fail summary with timing information. Use this as your first diagnostic step.
+
+#### Individual Test Scripts
+
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `test-snaptrade-provider.js` | Tests SnapTrade initialization and holdings fetch | After SnapTrade setup to verify credentials and brokerage connections |
@@ -514,13 +526,12 @@ cd ~/MagicMirror/modules/MMM-Fintech
 **Example usage:**
 
 ```bash
-# Verify SnapTrade is working
+# Run complete health check (recommended)
+node health-check.js
+
+# Or run individual tests for specific diagnostics
 node test-snaptrade-provider.js
-
-# Check if Twelve Data can fetch your symbols
 node test-twelvedata.js
-
-# Debug the full sync process
 node test-full-sync.js
 ```
 
