@@ -113,6 +113,7 @@ async function main() {
   console.log("-".repeat(60));
   console.log("\nForex pairs to fetch: " + forexPairs.map(function(f) { return f.pair; }).join(", "));
   console.log("\nDone!");
+  process.exit(0);
 }
 
 main().catch(function(err) {

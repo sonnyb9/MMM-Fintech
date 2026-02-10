@@ -85,6 +85,8 @@ async function test() {
 
   console.log("Credits used: " + provider.creditsUsed + ", remaining: " + provider.creditsLeft);
   console.log("\n=== Test Complete ===");
+  
+  process.exit(failed > 0 ? 1 : 0);
 }
 
 test().catch(function(error) {

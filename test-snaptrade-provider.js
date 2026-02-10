@@ -49,6 +49,7 @@ async function main() {
     }, 0);
 
     console.log("\nTotal value: $" + total.toFixed(2));
+    process.exit(0);
   } catch (err) {
     console.error("Failed to fetch holdings:", err.message);
     if (err.response) {

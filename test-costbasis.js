@@ -67,6 +67,7 @@ async function main() {
   console.log("\nTotal Value:      $" + totalValue.toFixed(2));
   console.log("Total Cost Basis: $" + totalCostBasis.toFixed(2));
   console.log("Total Gain/Loss:  $" + totalGainLoss.toFixed(2) + " (" + sign + totalGainLossPercent.toFixed(2) + "%)");
+  process.exit(0);
 }
 
 main().catch(function(err) {
