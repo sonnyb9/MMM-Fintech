@@ -106,7 +106,36 @@ npm install
 
 ## Setup
 
-### 1. Set Up SnapTrade (Recommended)
+### Quick Setup (Recommended)
+
+Use the unified setup wizard to configure all providers interactively:
+
+```bash
+cd ~/MagicMirror/modules/MMM-Fintech
+node setup.js
+```
+
+The wizard will guide you through:
+- **SnapTrade** (automated brokerage holdings, includes staked crypto)
+- **Coinbase CDP API** (crypto only, excludes staked assets)
+- **Twelve Data** (stock/ETF/forex pricing)
+- **Manual Holdings** (no API, manual JSON editing)
+
+After configuring SnapTrade, run this to connect your brokerages:
+
+```bash
+node snaptrade-connect.js
+```
+
+Open the URL in a browser to authorize access. **Note**: Connection URLs expire in 5 minutes.
+
+---
+
+### Manual Setup (Alternative)
+
+If you prefer individual setup scripts instead of the wizard:
+
+#### 1. Set Up SnapTrade (Recommended)
 
 SnapTrade provides the most complete holdings data, including staked crypto.
 
@@ -122,7 +151,7 @@ node snaptrade-connect.js
 
 Open the URL in a browser to connect your brokerage accounts (Fidelity, Coinbase, etc.). **Note**: The connection portal URL expires in 5 minutes—run the command again if it expires before you complete the connection.
 
-### 2. Set Up Coinbase CDP API (Alternative to SnapTrade for Crypto)
+#### 2. Set Up Coinbase CDP API (Alternative to SnapTrade for Crypto)
 
 Only needed if you're not using SnapTrade for crypto holdings.
 
@@ -139,7 +168,7 @@ This will:
 - Create `cdp-credentials.enc` from your JSON file
 - Prompt to delete the original JSON (recommended)
 
-### 3. Set Up Twelve Data (Required for Stock/Forex Pricing)
+#### 3. Set Up Twelve Data (Required for Stock/Forex Pricing)
 
 ```bash
 node setup-twelvedata.js
@@ -147,7 +176,9 @@ node setup-twelvedata.js
 
 Enter your API key when prompted. This creates `twelvedata-credentials.enc`.
 
-### 4. Configure MagicMirror
+---
+
+### Configure MagicMirror
 
 Add to your `config/config.js`:
 

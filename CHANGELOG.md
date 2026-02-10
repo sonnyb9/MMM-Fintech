@@ -2,6 +2,25 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [0.9.0] - 2026-02-10
+
+### Added
+- **Unified Setup Wizard**: New `setup.js` script for interactive provider configuration
+  - Single menu-driven interface for all credential setup
+  - Clear warnings about provider limitations (e.g., Coinbase excludes staked assets)
+  - Manual holdings guidance with README reference
+  - Streamlines setup process from 5+ separate scripts to one wizard
+- **Unified Health Check**: New `health-check.js` diagnostic runner
+  - Runs all four test scripts in sequence (SnapTrade, Twelve Data, Full Sync, Cost Basis)
+  - Provides pass/fail summary with timing information
+  - Color-coded output for quick status assessment
+  - Simplifies troubleshooting from choosing between 4 scripts to one command
+
+### Documentation
+- Updated README with "Quick Setup" section featuring the new wizard
+- Added health-check documentation to diagnostic test scripts section
+- Reorganized setup instructions: Quick Setup (recommended) vs Manual Setup (alternative)
+
 ## [0.8.2] - 2026-01-22
 
 ### Added

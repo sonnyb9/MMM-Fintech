@@ -129,34 +129,26 @@ Visual performance charts for portfolio tracking over time.
 - ✅ **Config Options**: showCharts, chartMode, chartPeriod, showPeriodSelector, historyRetention
 - ✅ **Storage Efficiency**: ~250 KB/year for 10 holdings
 
-### Future Enhancement: Individual Holding Charts
+## ✅ Phase 5 - User Experience (Complete)
 
-Optional feature for tracking individual holdings over time:
-- Would use Twelve Data `/time_series` endpoint
-- Configurable via `chartHoldings` array
-- Not implemented in v0.8.0 to avoid API complexity
+**Status**: Released in v0.9.0
+
+Simplified setup and diagnostics for better user experience.
+
+- ✅ **Unified setup wizard** — Single interactive `node setup.js` that walks through all provider configurations in sequence (reduces setup friction from managing 5+ credential files)
+- ✅ **Unified health check** — Single diagnostic command (`health-check.js`) that runs all test scripts in sequence and provides a summarized status report (easier than choosing between 4 separate test scripts)
 
 ## 🔮 Future Enhancements
 
 Features under consideration for future phases:
 
+### Charts
+- **Individual holding charts**: Track individual holdings over time using Twelve Data `/time_series` endpoint, configurable via `chartHoldings` array (not implemented in v0.8.0 to avoid API complexity)
+
 ### Performance Tracking
 - Benchmark comparison (S&P 500, etc.)
 - Dividend tracking and income reporting
 - Percentage vs dollar gain views
-
-### Advanced Features
-- Multiple currency support
-- Tax lot tracking for cost basis
-- Rebalancing suggestions
-- Asset allocation visualization
-- Portfolio diversity metrics
-
-### User Experience
-- Multiple portfolio support
-- Customizable display layouts
-- Mobile companion app
-- Voice assistant integration
 
 ### Data Sources
 - Additional brokerage integrations via SnapTrade (Vanguard, Schwab, etc.)
@@ -170,6 +162,7 @@ Have ideas for the roadmap? Open an issue on [GitHub](https://github.com/sonnyb9
 
 ## Version History
 
+- **v0.9.0** (2026-02-10) - Phase 5 complete: User experience enhancements (unified setup wizard, health check)
 - **v0.8.0** (2026-01-09) - Phase 4 complete: Portfolio performance charts
 - **v0.7.0** (2026-01-08) - Phase 3.3 complete: Cost basis and gain/loss tracking
 - **v0.6.0** (2026-01-07) - Phase 3.2 complete: SnapTrade integration for brokerage holdings
