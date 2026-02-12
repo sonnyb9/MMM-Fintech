@@ -897,6 +897,10 @@ Module.register("MMM-Fintech", {
     var yMax = maxValue + padding;
 
     if (costBasis > 0) {
+      yMin = Math.min(yMin, costBasis - padding);
+    }
+
+    if (costBasis > 0) {
       var costBasisData = new Array(values.length).fill(costBasis);
       datasets.push({
         label: "Cost Basis",
