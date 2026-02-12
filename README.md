@@ -4,6 +4,20 @@ A MagicMirror² module for displaying consolidated financial holdings with real-
 
 > **Note**: This module is a work in progress. Features and APIs may change.
 
+## Important Notes
+
+### Stock Sale Settlement (T+2)
+
+When you sell stocks, ETFs, or mutual funds in US markets, the proceeds settle **two business days after the trade date (T+2)**. During this time:
+
+- **Your holdings will reflect the reduced share count immediately** (as reported by your brokerage)
+- **Cash proceeds won't appear until settlement** (typically 2 business days later)
+- **Total portfolio value may appear lower than expected** until cash settles
+
+**Example**: If you sell $20,000 worth of stock on Wednesday, your portfolio total will drop by ~$20,000 until Friday when the cash settles into your money market fund (SPAXX, etc.). This is normal brokerage behavior and not a bug.
+
+If you need to manually account for pending settlements, you can add the expected cash to `manual-holdings.json` temporarily.
+
 ## Features
 
 - **Multi-Asset Support**: Crypto, stocks, ETFs, mutual funds, and forex
