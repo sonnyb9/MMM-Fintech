@@ -1127,8 +1127,13 @@ Module.register("MMM-Fintech", {
         this.selectedPeriod = payload.period;
       }
       if (this.config.showCharts) {
-        Log.info("[MMM-Fintech] Rendering charts now");
-        this.renderCharts();
+        Log.info("[MMM-Fintech] Updating DOM to include chart canvas elements");
+        this.updateDom();
+        var self = this;
+        setTimeout(function() {
+          Log.info("[MMM-Fintech] Rendering charts now");
+          self.renderCharts();
+        }, 100);
       }
     }
   }
