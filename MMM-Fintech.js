@@ -1115,16 +1115,19 @@ Module.register("MMM-Fintech", {
 
       if (this.config.showCharts && !this.historyRequested) {
         this.historyRequested = true;
+        Log.info("[MMM-Fintech] Auto-requesting chart history for period: " + this.selectedPeriod);
         this.sendSocketNotification("MMM-FINTECH_GET_HISTORY", { period: this.selectedPeriod });
       }
     }
 
     if (notification === "MMM-FINTECH_HISTORY") {
       this.chartData = payload.data || [];
+      Log.info("[MMM-Fintech] Received " + this.chartData.length + " history data points for period: " + payload.period);
       if (payload.period) {
         this.selectedPeriod = payload.period;
       }
       if (this.config.showCharts) {
+        Log.info("[MMM-Fintech] Rendering charts now");
         this.renderCharts();
       }
     }

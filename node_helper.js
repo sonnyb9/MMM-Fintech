@@ -89,6 +89,7 @@ module.exports = NodeHelper.create({
     }
 
     if (notification === "MMM-FINTECH_GET_HISTORY") {
+      this.log("Received history request for period: " + payload.period);
       this.sendHistoryDataForPeriod(payload.period);
     }
   },
@@ -659,10 +660,12 @@ module.exports = NodeHelper.create({
 
   sendHistoryDataForPeriod: function(period) {
     if (!this.historyManager) {
+      this.log("Cannot send history - historyManager not initialized");
       return;
     }
 
     var data = this.historyManager.getChartData(period);
+    this.log("Sending " + data.length + " history data points for period: " + period);
     this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data, period: period });
   },
 
