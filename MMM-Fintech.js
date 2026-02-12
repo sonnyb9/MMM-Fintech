@@ -114,11 +114,19 @@ Module.register("MMM-Fintech", {
   },
 
   notificationReceived: function (notification, payload, sender) {
-    if (notification === "NEW_PAGE" && this.config.displayMode === "ticker") {
-      var self = this;
-      setTimeout(function () {
-        self.startTickerAnimation();
-      }, 200);
+    if (notification === "NEW_PAGE") {
+      if (this.config.displayMode === "ticker") {
+        var self = this;
+        setTimeout(function () {
+          self.startTickerAnimation();
+        }, 200);
+      }
+      if (this.config.showCharts && this.chartData.length > 0) {
+        var self = this;
+        setTimeout(function () {
+          self.renderCharts();
+        }, 300);
+      }
     }
   },
 
