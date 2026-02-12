@@ -101,6 +101,7 @@ Module.register("MMM-Fintech", {
     this.selectedPeriod = this.config.chartPeriod;
     this.marketStatus = {};
     this.tickerAnimationId = null;
+    this.historyRequested = false;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
@@ -1111,6 +1112,11 @@ Module.register("MMM-Fintech", {
       this.snaptradeTimeoutError = payload.snaptradeTimeoutError || false;
       this.marketStatus = payload.marketStatus || {};
       this.updateDom();
+
+      if (this.config.showCharts && !this.historyRequested) {
+        this.historyRequested = true;
+        this.sendSocketNotification("MMM-FINTECH_GET_HISTORY", { period: this.selectedPeriod });
+      }
     }
 
     if (notification === "MMM-FINTECH_HISTORY") {
