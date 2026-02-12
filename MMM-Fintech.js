@@ -101,6 +101,7 @@ Module.register("MMM-Fintech", {
     this.selectedPeriod = this.config.chartPeriod;
     this.marketStatus = {};
     this.tickerAnimationId = null;
+    this.tickerPauseInterval = null;
     this.historyRequested = false;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
@@ -348,6 +349,36 @@ Module.register("MMM-Fintech", {
     tracks.forEach(function(t) {
       t.style.animationDuration = duration + "s";
     });
+
+    if (this.tickerPauseInterval) {
+      clearInterval(this.tickerPauseInterval);
+      this.tickerPauseInterval = null;
+    }
+
+    if (this.config.tickerPause > 0) {
+      var self = this;
+      var items = track.querySelectorAll(".mmm-fintech-ticker-item");
+      
+      if (items.length === 0) {
+        return;
+      }
+
+      var averageItemWidth = trackWidth / items.length;
+      var itemScrollTime = (averageItemWidth / speed) * 1000;
+      var cycleTime = itemScrollTime + this.config.tickerPause;
+
+      this.tickerPauseInterval = setInterval(function() {
+        tracks.forEach(function(t) {
+          t.style.animationPlayState = "paused";
+        });
+
+        setTimeout(function() {
+          tracks.forEach(function(t) {
+            t.style.animationPlayState = "running";
+          });
+        }, self.config.tickerPause);
+      }, cycleTime);
+    }
   },
 
   getDisplayHoldings: function () {
