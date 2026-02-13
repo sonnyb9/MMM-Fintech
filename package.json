@@ -6,6 +6,9 @@
   "license": "MIT",
   "dependencies": {
     "jsonwebtoken": "^9.0.2",
-    "snaptrade-typescript-sdk": "^9.0.158"
+    "snaptrade-typescript-sdk": "^9.0.164"
+  },
+  "overrides": {
+    "axios": "^1.13.5"
   }
 }
