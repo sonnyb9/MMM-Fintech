@@ -21,3 +21,8 @@ snaptrade-connect.js
 
 # Local patch artifacts
 *.patch
+
+# Backup files
+*.backup-*
+*.bak
+history-backup-*.json
