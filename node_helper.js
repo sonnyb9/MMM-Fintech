@@ -22,6 +22,9 @@ module.exports = NodeHelper.create({
     this.postClosePollByType = {};
     this.lastMarketStatusLog = {};
     this.historyManager = null;
+    this.pendingHistoryPeriods = [];
+    this.runtimeStarted = false;
+    this.isSyncingHoldings = false;
   },
 
   log: function(msg) {
@@ -77,20 +80,57 @@ module.exports = NodeHelper.create({
   socketNotificationReceived: function(notification, payload) {
     if (notification === "MMM-FINTECH_INIT") {
       this.config = payload.config;
-      this.historyManager = new HistoryManager(this.path, this.config);
+      this.ensureHistoryManager(payload.config);
       this.initProviders();
       this.loadCachedData();
+      this.ensureRuntimeStarted();
+      this.syncIfStale();
+      this.flushPendingHistoryRequests();
     }
 
     if (notification === "MMM-FINTECH_SYNC") {
+      this.ensureRuntimeStarted();
       this.syncIfStale();
-      this.schedulePriceUpdates();
-      this.scheduleNextHoldingsSync();
     }
 
     if (notification === "MMM-FINTECH_GET_HISTORY") {
       this.log("Received history request for period: " + payload.period);
+      if (!this.ensureHistoryManager()) {
+        this.pendingHistoryPeriods.push(payload.period);
+        this.log("Deferring history request until initialization completes");
+        return;
+      }
       this.sendHistoryDataForPeriod(payload.period);
+    }
+  },
+
+  ensureHistoryManager: function(configOverride) {
+    if (this.historyManager) {
+      return true;
+    }
+
+    if (configOverride) {
+      this.config = configOverride;
+    }
+
+    if (!this.config) {
+      return false;
+    }
+
+    this.historyManager = new HistoryManager(this.path, this.config);
+    return true;
+  },
+
+  flushPendingHistoryRequests: function() {
+    if (!this.pendingHistoryPeriods.length || !this.ensureHistoryManager()) {
+      return;
+    }
+
+    var periods = this.pendingHistoryPeriods.slice();
+    this.pendingHistoryPeriods = [];
+
+    for (var i = 0; i < periods.length; i++) {
+      this.sendHistoryDataForPeriod(periods[i]);
     }
   },
 
@@ -192,6 +232,16 @@ module.exports = NodeHelper.create({
     this.stockPriceInterval = setInterval(function() {
       self.updatePricesByType("stock");
     }, stockInterval);
+  },
+
+  ensureRuntimeStarted: function() {
+    if (this.runtimeStarted) {
+      return;
+    }
+
+    this.runtimeStarted = true;
+    this.schedulePriceUpdates();
+    this.scheduleNextHoldingsSync();
   },
 
   getMarketSchedule: function(assetType) {
@@ -624,7 +674,7 @@ module.exports = NodeHelper.create({
   },
 
   recordSnapshot: function(holdings, isDaily) {
-    if (!this.historyManager) {
+    if (!this.ensureHistoryManager()) {
       return;
     }
 
@@ -649,7 +699,7 @@ module.exports = NodeHelper.create({
   },
 
   sendHistoryData: function() {
-    if (!this.historyManager || !this.config.showCharts) {
+    if (!this.ensureHistoryManager() || !this.config.showCharts) {
       return;
     }
 
@@ -659,8 +709,9 @@ module.exports = NodeHelper.create({
   },
 
   sendHistoryDataForPeriod: function(period) {
-    if (!this.historyManager) {
-      this.log("Cannot send history - historyManager not initialized");
+    if (!this.ensureHistoryManager()) {
+      this.pendingHistoryPeriods.push(period);
+      this.log("Deferring history send until initialization completes");
       return;
     }
 
@@ -670,7 +721,12 @@ module.exports = NodeHelper.create({
   },
 
   syncHoldings: async function() {
-    var self = this;
+    if (this.isSyncingHoldings) {
+      this.log("Holdings sync already in progress, skipping duplicate request");
+      return;
+    }
+
+    this.isSyncingHoldings = true;
     this.log("Starting holdings sync...");
     this.invalidSymbols = [];
     this.rateLimitedSymbols = [];
@@ -831,6 +887,8 @@ module.exports = NodeHelper.create({
     } catch (error) {
       this.logError("SYNC", "Holdings sync failed", error.message);
       this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
+    } finally {
+      this.isSyncingHoldings = false;
     }
   },
 
