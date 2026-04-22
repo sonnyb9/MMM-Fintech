@@ -47,52 +47,29 @@ class TwelveDataProvider extends BaseProvider {
 
   classifyError(error) {
     var message = error.message || "";
+    var status = typeof error.statusCode === "number" ? error.statusCode : null;
 
-    if (message.includes("429") || message.includes("Too Many Requests") || message.includes("rate limit")) {
-      return {
-        code: "RATE_LIMIT",
-        retryable: true,
-        message: message
-      };
+    if ((status === 429) || message.includes("429") || message.includes("Too Many Requests") || message.includes("rate limit")) {
+      return { code: "RATE_LIMIT", retryable: true, message: message };
     }
 
-    if (message.includes("401") || message.includes("Invalid API key")) {
-      return {
-        code: "AUTH_ERROR",
-        retryable: false,
-        message: message
-      };
+    if ((status === 401 || status === 403) || message.includes("401") || message.includes("403") || message.includes("Invalid API key")) {
+      return { code: "AUTH_ERROR", retryable: false, message: message };
     }
 
-    if (message.includes("404") || message.includes("not found") || message.includes("No data")) {
-      return {
-        code: "INVALID_SYMBOL",
-        retryable: false,
-        message: message
-      };
+    if ((status === 404) || message.includes("404") || message.includes("not found") || message.includes("No data")) {
+      return { code: "INVALID_SYMBOL", retryable: false, message: message };
     }
 
-    if (message.includes("500") || message.includes("502") || message.includes("503") || message.includes("504")) {
-      return {
-        code: "SERVER_ERROR",
-        retryable: true,
-        message: message
-      };
+    if ((status && status >= 500) || message.includes("500") || message.includes("502") || message.includes("503") || message.includes("504")) {
+      return { code: "SERVER_ERROR", retryable: true, message: message };
     }
 
     if (message.includes("ECONNRESET") || message.includes("ETIMEDOUT") || message.includes("ENOTFOUND")) {
-      return {
-        code: "NETWORK_ERROR",
-        retryable: true,
-        message: message
-      };
+      return { code: "NETWORK_ERROR", retryable: true, message: message };
     }
 
-    return {
-      code: "UNKNOWN",
-      retryable: false,
-      message: message
-    };
+    return { code: "UNKNOWN", retryable: false, message: message };
   }
 
   makeAPIRequest(endpoint, params) {
@@ -110,7 +87,9 @@ class TwelveDataProvider extends BaseProvider {
         path: "/" + endpoint + "?" + queryString,
         method: "GET",
         headers: {
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          // Opt into new error behavior before May 16; harmless after it becomes default
+          "X-API-Version": "last"
         }
       };
 
@@ -129,18 +108,38 @@ class TwelveDataProvider extends BaseProvider {
         });
 
         res.on("end", function() {
+          // Handle HTTP status codes first (new behavior from Twelve Data)
+          var parsed = null;
           try {
-            var parsed = JSON.parse(data);
+            parsed = data ? JSON.parse(data) : null;
+          } catch (e) {
+            // leave parsed as null; we'll fall back to raw text
+          }
 
-            if (parsed.status === "error" || parsed.code) {
-              var errorCode = parsed.code || res.statusCode;
+          if (res.statusCode && res.statusCode >= 400) {
+            var httpErr = new Error(
+              "HTTP " + res.statusCode +
+              ": " + (parsed && parsed.message ? parsed.message : (typeof data === "string" ? data.slice(0,200) : ""))
+            );
+            httpErr.statusCode = res.statusCode;
+            return reject(httpErr);
+          }
+
+          try {
+            // Back-compat: older behavior returned 200 with an error object
+            if (parsed && (parsed.status === "error" || parsed.code)) {
+              var errorCode = parsed.code || res.statusCode || 400;
               var errorMessage = parsed.message || "Unknown error";
-              reject(new Error("API error " + errorCode + ": " + errorMessage));
-              return;
+              var bodyErr = new Error("API error " + errorCode + ": " + errorMessage);
+              if (!bodyErr.statusCode && typeof errorCode === "number") {
+                bodyErr.statusCode = errorCode;
+              }
+              return reject(bodyErr);
             }
 
             resolve(parsed);
           } catch (error) {
+            // Parsing failed on a 2xx response without a JSON error object
             reject(new Error("Failed to parse response: " + error.message));
           }
         });
