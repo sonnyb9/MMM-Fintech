@@ -703,9 +703,9 @@ module.exports = NodeHelper.create({
       return;
     }
 
-    var period = this.config.chartPeriod || "1M";
+    var period = this.currentHistoryPeriod || this.config.chartPeriod || "1M";
     var data = this.historyManager.getChartData(period);
-    this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data });
+    this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data, period: period });
   },
 
   sendHistoryDataForPeriod: function(period) {
@@ -715,9 +715,10 @@ module.exports = NodeHelper.create({
       return;
     }
 
-    var data = this.historyManager.getChartData(period);
-    this.log("Sending " + data.length + " history data points for period: " + period);
-    this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data, period: period });
+    this.currentHistoryPeriod = period || this.currentHistoryPeriod || this.config.chartPeriod || "1M";
+    var data = this.historyManager.getChartData(this.currentHistoryPeriod);
+    this.log("Sending " + data.length + " history data points for period: " + this.currentHistoryPeriod);
+    this.sendSocketNotification("MMM-FINTECH_HISTORY", { data: data, period: this.currentHistoryPeriod });
   },
 
   syncHoldings: async function() {
