@@ -531,14 +531,14 @@ The module can display portfolio value charts over time.
 ### View Logs
 
 ```bash
-pm2 logs mm --lines 100 | grep -i fintech
+pm2 logs <your-magicmirror-pm2-process> --lines 100 | grep -i fintech
 ```
 
 ### Force Holdings Sync
 
 ```bash
 rm ~/MagicMirror/modules/MMM-Fintech/cache.json
-pm2 restart mm
+pm2 restart <your-magicmirror-pm2-process>
 ```
 
 ### Diagnostic Test Scripts
@@ -583,8 +583,8 @@ node test-full-sync.js
 ### Common Errors
 
 **"Crypto holdings data is N hours old"**
-- Check sync logs: `pm2 logs mm --lines 100 | grep -E "Holdings sync"`
-- Restart: `pm2 restart mm`
+- Check sync logs: `pm2 logs <your-magicmirror-pm2-process> --lines 100 | grep -E "Holdings sync"`
+- Restart: `pm2 restart <your-magicmirror-pm2-process>`
 
 **"Invalid symbol 'XYZ'"**
 - Verify symbol exists on the appropriate exchange
@@ -608,7 +608,7 @@ node test-full-sync.js
 - SnapTrade API failed to respond within timeout period (30 seconds)
 - Module automatically retries with exponential backoff: 1min, 2min, 4min
 - After 4 total attempts (1 initial + 3 retries), error is displayed in footer
-- Check logs for detailed retry information: `pm2 logs mm | grep SnapTrade`
+- Check logs for detailed retry information: `pm2 logs <your-magicmirror-pm2-process> | grep SnapTrade`
 - Usually resolves automatically on next sync cycle
 - If persistent, check SnapTrade service status or network connectivity
 

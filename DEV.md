@@ -44,15 +44,15 @@ git push -u origin feature/snaptrade
 ```bash
 cd ~/MagicMirror/modules/MMM-Fintech
 git pull
-pm2 restart mm --update-env
-pm2 logs mm
+pm2 restart <your-magicmirror-pm2-process> --update-env
+pm2 logs <your-magicmirror-pm2-process>
 ```
 
 If `package.json` / `package-lock.json` changed:
 
 ```bash
 npm install
-pm2 restart mm --update-env
+pm2 restart <your-magicmirror-pm2-process> --update-env
 ```
 
 ## Secrets and Local State (must NOT be committed)
