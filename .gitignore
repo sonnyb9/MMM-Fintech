@@ -17,7 +17,6 @@ history-backup.json
 # SnapTrade
 snaptrade-credentials.enc
 snaptrade-debug-accounts.js
-snaptrade-connect.js
 
 # Local patch artifacts
 *.patch

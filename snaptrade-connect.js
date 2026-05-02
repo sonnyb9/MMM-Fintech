@@ -43,7 +43,7 @@ async function main() {
 
   console.log("Open this URL in your browser to connect a new brokerage:\n");
   console.log(resp.data.redirectURI);
-  console.log("\nSelect Coinbase from the list and complete the OAuth flow.");
+  console.log("\nSelect your brokerage from the list and complete the connection flow.");
 }
 
 main().catch(function(err) {
