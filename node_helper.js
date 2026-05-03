@@ -151,6 +151,14 @@ module.exports = NodeHelper.create({
       this.log("TwelveData provider not configured (optional)");
     }
 
+    var eodhd = providers.createProvider("eodhd");
+    if (eodhd.init(this.config, this.path)) {
+      this.providers.eodhd = eodhd;
+      this.log("EODHD provider initialized");
+    } else {
+      this.log("EODHD provider not configured (optional)");
+    }
+
     var snaptrade = providers.createProvider("snaptrade");
     if (snaptrade.init(this.config, this.path)) {
       this.providers.snaptrade = snaptrade;
@@ -159,7 +167,7 @@ module.exports = NodeHelper.create({
       this.log("SnapTrade provider not configured (optional)");
     }
 
-    if (!this.providers.coinbase && !this.providers.twelvedata && !this.providers.snaptrade) {
+    if (!this.providers.coinbase && !this.providers.twelvedata && !this.providers.eodhd && !this.providers.snaptrade) {
       this.logError("INIT", "No providers initialized");
       this.sendSocketNotification("MMM-FINTECH_ERROR", { hasError: true });
     }
@@ -170,6 +178,10 @@ module.exports = NodeHelper.create({
 
     if (assetType === "cash") {
       return null;
+    }
+
+    if (assetType === "mutual_fund" && this.providers.eodhd) {
+      return this.providers.eodhd;
     }
 
     var providerName = providers.getProviderForAssetType(assetType);
@@ -183,6 +195,23 @@ module.exports = NodeHelper.create({
     }
 
     return this.providers.twelvedata || null;
+  },
+
+  shouldRefreshEODHDMutualFund: function(holding, cache) {
+    if ((holding.type || "crypto") !== "mutual_fund") {
+      return true;
+    }
+
+    if (!this.providers.eodhd) {
+      return true;
+    }
+
+    var lastUpdate = cache && cache.lastMutualFundPriceUpdate ? new Date(cache.lastMutualFundPriceUpdate) : null;
+    if (!lastUpdate || Number.isNaN(lastUpdate.getTime())) {
+      return true;
+    }
+
+    return (Date.now() - lastUpdate.getTime()) >= (20 * 60 * 60 * 1000);
   },
 
   fetchConversionRate: async function() {
@@ -514,6 +543,8 @@ module.exports = NodeHelper.create({
       var quantity = holding.quantity || 0;
       var costBasis = holding.costBasis || 0;
       var openPnl = holding.openPnl || 0;
+      var manualPrice = typeof holding.manualPrice === "number" ? holding.manualPrice : null;
+      var manualChange24h = typeof holding.manualChange24h === "number" ? holding.manualChange24h : null;
 
       if (merged[mergeKey]) {
         var existing = merged[mergeKey];
@@ -523,6 +554,12 @@ module.exports = NodeHelper.create({
         existing.costBasis = totalCostBasis;
         existing.openPnl = (existing.openPnl || 0) + openPnl;
         existing.sources = existing.sources.concat(sources);
+        if (existing.manualPrice === null && manualPrice !== null) {
+          existing.manualPrice = manualPrice;
+        }
+        if (existing.manualChange24h === null && manualChange24h !== null) {
+          existing.manualChange24h = manualChange24h;
+        }
       } else {
         merged[mergeKey] = {
           symbol: symbol,
@@ -530,7 +567,9 @@ module.exports = NodeHelper.create({
           type: type,
           sources: sources.slice(),
           costBasis: costBasis,
-          openPnl: openPnl
+          openPnl: openPnl,
+          manualPrice: manualPrice,
+          manualChange24h: manualChange24h
         };
       }
     }
@@ -543,6 +582,17 @@ module.exports = NodeHelper.create({
     }
 
     return result;
+  },
+
+  applyManualPriceOverride: function(holding) {
+    if (typeof holding.manualPrice !== "number") {
+      return false;
+    }
+
+    holding.price = holding.manualPrice * this.conversionRate;
+    holding.change24h = typeof holding.manualChange24h === "number" ? holding.manualChange24h : 0;
+    holding.value = holding.quantity * holding.price;
+    return true;
   },
 
   loadManualData: function() {
@@ -777,6 +827,8 @@ module.exports = NodeHelper.create({
       var allHoldings = this.mergeHoldings(combinedHoldings);
       this.log("Merged into " + allHoldings.length + " unique holdings");
 
+      var usedEODHDForMutualFunds = false;
+
       for (var i = 0; i < allHoldings.length; i++) {
         var holding = allHoldings[i];
         var assetType = holding.type || "crypto";
@@ -785,6 +837,10 @@ module.exports = NodeHelper.create({
           holding.price = 1.0 * this.conversionRate;
           holding.change24h = 0;
           holding.value = holding.quantity * holding.price;
+          continue;
+        }
+
+        if (this.applyManualPriceOverride(holding)) {
           continue;
         }
 
@@ -803,6 +859,9 @@ module.exports = NodeHelper.create({
           holding.price = priceData.price * this.conversionRate;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
+          if (provider === this.providers.eodhd && assetType === "mutual_fund") {
+            usedEODHDForMutualFunds = true;
+          }
         } catch (error) {
           if (error.code === "INVALID_SYMBOL") {
             if (this.invalidSymbols.indexOf(holding.symbol) === -1) {
@@ -869,6 +928,7 @@ module.exports = NodeHelper.create({
         lastPriceUpdate: new Date().toISOString(),
         lastCryptoPriceUpdate: new Date().toISOString(),
         lastStockPriceUpdate: new Date().toISOString(),
+        lastMutualFundPriceUpdate: usedEODHDForMutualFunds ? new Date().toISOString() : null,
         manualHoldingsModTime: this.getManualHoldingsModTime(),
         hasError: this.lastError !== null,
         invalidSymbols: this.invalidSymbols,
@@ -928,6 +988,16 @@ module.exports = NodeHelper.create({
           continue;
         }
 
+        if (this.applyManualPriceOverride(holding)) {
+          updatedCount++;
+          continue;
+        }
+
+        if (!isCrypto && !this.shouldRefreshEODHDMutualFund(holding, cache)) {
+          skippedCount++;
+          continue;
+        }
+
         var provider = this.getProviderForSymbol(holding);
 
         if (!provider) {
@@ -939,6 +1009,9 @@ module.exports = NodeHelper.create({
           holding.price = priceData.price * this.conversionRate;
           holding.change24h = priceData.change24h;
           holding.value = holding.quantity * holding.price;
+          if (provider === this.providers.eodhd && holdingType === "mutual_fund") {
+            cache.lastMutualFundPriceUpdate = new Date().toISOString();
+          }
           updatedCount++;
         } catch (error) {
           if (error.code === "INVALID_SYMBOL") {

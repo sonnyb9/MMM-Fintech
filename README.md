@@ -23,7 +23,8 @@ If you need to manually account for pending settlements, you can add the expecte
 - **Multi-Asset Support**: Crypto, stocks, ETFs, mutual funds, and forex
 - **SnapTrade Integration**: Fetches holdings from Fidelity, Coinbase, and other brokerages
 - **Coinbase Integration**: Fetches crypto holdings via CDP API
-- **Twelve Data Integration**: Stocks, ETFs, mutual funds, and forex pricing
+- **Twelve Data Integration**: Stocks, ETFs, and forex pricing
+- **EODHD Integration**: Mutual fund pricing with support for funds not covered by Twelve Data
 - **Manual Holdings**: Support for manual entry without any API registrations
 - **Cost Basis & Gain/Loss**: Display unrealized gain/loss percentages
 - **Portfolio Charts**: Visual performance tracking over time
@@ -50,7 +51,7 @@ MMM-Fintech supports multiple ways to track your holdings, from fully manual to 
 
 If you prefer not to register for any data provider APIs, you can manually enter your holdings in `manual-holdings.json`. This requires you to update the file yourself whenever your holdings change.
 
-**How it works**: You enter your holdings (symbol, quantity, type) in a JSON file. The module will still need Twelve Data (free tier) to fetch current prices, or you can use the `cash` type for money market funds which uses a fixed $1.00 price with no API calls.
+**How it works**: You enter your holdings (symbol, quantity, type) in a JSON file. The module will still need a pricing provider for market-priced holdings: Twelve Data for stocks/ETFs/forex, and EODHD for mutual funds when configured. You can also use the `cash` type for money market funds which uses a fixed $1.00 price with no API calls.
 
 **Best for**: Users who want simplicity, don't want to share credentials with third-party services, or have holdings at brokerages not supported by SnapTrade.
 
@@ -87,15 +88,27 @@ See [Manual Holdings Setup](#5-add-manual-holdings-optional) for the file format
 
 ### Twelve Data (Free Tier - Pricing Only)
 
-**Purpose**: Provides real-time pricing for stocks, ETFs, mutual funds, and forex rates
+**Purpose**: Provides real-time pricing for stocks, ETFs, and forex rates
 
 **Cost**: Free tier includes 8 API calls/minute (800/day). See [Twelve Data Pricing](https://twelvedata.com/pricing)
 
-**Note**: Twelve Data is a pricing provider only—it does not track holdings. Holdings come from SnapTrade, Coinbase, manual entry, or a combination. With the default 20-minute update interval during market hours, you'll use approximately 200 calls/day for 10 symbols, well within the free tier.
+**Note**: Twelve Data is a pricing provider only—it does not track holdings. Holdings come from SnapTrade, Coinbase, manual entry, or a combination. In the current provider split, Twelve Data is used for stocks, ETFs, and forex. With the default 20-minute update interval during market hours, you'll use approximately 200 calls/day for 10 symbols, well within the free tier.
 
 **Get credentials**:
 1. Create account at [Twelve Data](https://twelvedata.com/)
 2. Copy your API key from the dashboard
+
+### EODHD (Mutual Fund Pricing)
+
+**Purpose**: Provides pricing for mutual funds, including funds that may not be available through Twelve Data
+
+**Cost**: Free tier available, but small. See [EODHD Pricing](https://eodhd.com/pricing)
+
+**Note**: EODHD is optional and is only used for `mutual_fund` holdings when configured. MMM-Fintech resolves supported fund symbols internally to the appropriate exchange-form ticker such as `.US` or `.NMFQS`. Because the EODHD free tier is limited, mutual fund price refreshes are intentionally throttled more conservatively than stock/ETF updates.
+
+**Get credentials**:
+1. Create account at [EODHD](https://eodhd.com/)
+2. Copy your API token from the dashboard
 
 ### Provider Priority
 
@@ -106,7 +119,8 @@ When fetching holdings, the module uses this priority:
 
 For pricing:
 - **Crypto**: Coinbase CDP API
-- **Stocks/ETFs/Mutual Funds/Forex**: Twelve Data API
+- **Stocks/ETFs/Forex**: Twelve Data API
+- **Mutual Funds**: EODHD when configured, otherwise Twelve Data fallback
 - **Cash (money market)**: Fixed at $1.00 (no API calls)
 
 ## Installation
@@ -182,13 +196,21 @@ This will:
 - Create `cdp-credentials.enc` from your JSON file
 - Prompt to delete the original JSON (recommended)
 
-#### 3. Set Up Twelve Data (Required for Stock/Forex Pricing)
+#### 3. Set Up Twelve Data (Required for Stock/ETF/Forex Pricing)
 
 ```bash
 node setup-twelvedata.js
 ```
 
 Enter your API key when prompted. This creates `twelvedata-credentials.enc`.
+
+#### 4. Set Up EODHD (Optional - Recommended for Mutual Funds)
+
+```bash
+node setup-eodhd.js
+```
+
+Enter your API token when prompted. This creates `eodhd-credentials.enc`.
 
 ---
 
@@ -245,6 +267,13 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
       "type": "cash",
       "source": "fidelity",
       "notes": "Money market fund"
+    },
+    {
+      "symbol": "PRCFX",
+      "quantity": 53.498,
+      "type": "mutual_fund",
+      "source": "troweprice-ira",
+      "notes": "T. Rowe Price Capital Appreciation and Income Fund"
     }
   ],
   "forex": [
@@ -258,8 +287,13 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 - `crypto` - Cryptocurrency (priced via Coinbase)
 - `stock` - Individual stocks (priced via Twelve Data)
 - `etf` - Exchange-traded funds (priced via Twelve Data)
-- `mutual_fund` - Mutual funds (priced via Twelve Data)
+- `mutual_fund` - Mutual funds (priced via EODHD when configured, otherwise Twelve Data fallback)
 - `cash` - Money market funds with stable $1.00 NAV (no API calls)
+
+**Optional Manual Fields**:
+- `costBasis` - Total cost basis for gain/loss calculations
+- `manualPrice` - Optional local override price per share/unit when the pricing provider does not support the symbol
+- `manualChange24h` - Optional 24h change percentage paired with `manualPrice` (defaults to `0`)
 
 **Forex Pairs**: Inverse rates shown as a column (can be hidden via `showInverseForex: false`)
 
@@ -497,15 +531,18 @@ The module can display portfolio value charts over time.
 | `providers/index.js` | Factory functions for provider creation | Tracked |
 | `providers/base.js` | Base class with shared utilities | Tracked |
 | `providers/coinbase.js` | Coinbase CDP API provider (crypto) | Tracked |
+| `providers/eodhd.js` | EODHD provider (mutual fund pricing) | Tracked |
 | `providers/twelvedata.js` | Twelve Data API provider (stocks/ETFs/forex) | Tracked |
 | `providers/snaptrade.js` | SnapTrade API provider (brokerage holdings) | Tracked |
 | `lib/history-manager.js` | Chart history snapshot management | Tracked |
 | `setup-credentials.js` | CLI tool to encrypt Coinbase CDP API key | Tracked |
+| `setup-eodhd.js` | CLI tool to encrypt EODHD API key | Tracked |
 | `setup-twelvedata.js` | CLI tool to encrypt Twelve Data API key | Tracked |
 | `setup-snaptrade.js` | CLI tool to encrypt SnapTrade credentials | Tracked |
 | `snaptrade-connect.js` | CLI tool to generate brokerage connection URL | Tracked |
 | `cdp_api_key.json` | Original Coinbase key (delete after setup) | Ignored |
 | `cdp-credentials.enc` | Encrypted Coinbase credentials | Ignored |
+| `eodhd-credentials.enc` | Encrypted EODHD credentials | Ignored |
 | `twelvedata-credentials.enc` | Encrypted Twelve Data credentials | Ignored |
 | `snaptrade-credentials.enc` | Encrypted SnapTrade credentials | Ignored |
 | `~/.mmm-fintech-key` | Encryption key (shared by all providers) | N/A |
@@ -522,6 +559,10 @@ The module can display portfolio value charts over time.
 **Stocks/ETFs** (Twelve Data):
 - Use standard tickers: `AAPL`, `GOOGL`, `VOO`, `SPY`
 - Check: [Twelve Data Symbol Search](https://twelvedata.com/symbols)
+
+**Mutual Funds** (EODHD when configured, otherwise Twelve Data fallback):
+- Use standard fund tickers: `PRCFX`, `PREIX`, `FXAIX`
+- EODHD resolves supported symbols internally to exchange-form tickers like `.US` or `.NMFQS`
 
 **Forex** (Twelve Data):
 - Format: `BASE/QUOTE` (e.g., `USD/PHP`, `EUR/USD`)
@@ -592,6 +633,10 @@ node test-full-sync.js
 
 **"TwelveData provider not configured"**
 - Run `node setup-twelvedata.js` to add credentials
+
+**"EODHD provider not configured"**
+- Optional for mutual funds
+- Run `node setup-eodhd.js` to add credentials
 
 **"SnapTrade provider not configured"**
 - Run `node setup-snaptrade.js` to add credentials

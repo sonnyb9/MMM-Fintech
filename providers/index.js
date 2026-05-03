@@ -1,11 +1,13 @@
 const BaseProvider = require("./base");
 const CoinbaseProvider = require("./coinbase");
+const EODHDProvider = require("./eodhd");
 const TwelveDataProvider = require("./twelvedata");
 const SnapTradeProvider = require("./snaptrade");
 
 module.exports = {
   BaseProvider: BaseProvider,
   CoinbaseProvider: CoinbaseProvider,
+  EODHDProvider: EODHDProvider,
   TwelveDataProvider: TwelveDataProvider,
   SnapTradeProvider: SnapTradeProvider,
 
@@ -13,6 +15,8 @@ module.exports = {
     switch (type) {
       case "coinbase":
         return new CoinbaseProvider();
+      case "eodhd":
+        return new EODHDProvider();
       case "twelvedata":
         return new TwelveDataProvider();
       case "snaptrade":
@@ -28,9 +32,10 @@ module.exports = {
         return "coinbase";
       case "stock":
       case "etf":
-      case "mutual_fund":
       case "forex":
         return "twelvedata";
+      case "mutual_fund":
+        return "eodhd";
       default:
         return null;
     }

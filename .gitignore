@@ -2,6 +2,7 @@ node_modules/
 oauth-tokens.enc
 cdp-credentials.enc
 twelvedata-credentials.enc
+eodhd-credentials.enc
 cdp_api_key.json
 .env
 *.log
