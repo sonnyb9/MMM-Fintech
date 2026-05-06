@@ -307,7 +307,9 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 | `fontSize` | `100` | Font size as percentage (e.g., 80 for smaller, 120 for larger) |
 | `displayMode` | `"table"` | Display mode: `"table"` (default) or `"ticker"` for horizontal scrolling |
 | `tickerSpeed` | `50` | Ticker scroll speed in pixels per second |
+| `tickerStartDelay` | `3000` | Milliseconds to hold the ticker still before scrolling starts |
 | `tickerPause` | `0` | Milliseconds to pause on each item (0 = no pause) |
+| `tickerCollapseCash` | `false` | When `true`, combines all cash-equivalent holdings into a single `Cash` ticker item |
 | `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
 | `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
 | `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
@@ -446,6 +448,8 @@ Ticker mode displays holdings as a horizontal scrolling ticker bar, ideal for TV
 
 **Features:**
 - Portfolio total shown first with value-weighted 24h change
+- Cash-equivalent holdings appear immediately after the portfolio total
+- Cash-equivalent holdings show total value instead of a static `$1.00` NAV
 - Each holding shows: Symbol, Price, Change %
 - Green/red color coding for positive/negative changes
 - `(Closed)` indicator for non-crypto assets when markets are closed
@@ -456,7 +460,18 @@ Ticker mode displays holdings as a horizontal scrolling ticker bar, ideal for TV
 config: {
   displayMode: "ticker",
   tickerSpeed: 50,      // pixels per second
+  tickerStartDelay: 3000,
   tickerPause: 0        // no pause between items
+}
+```
+
+**Ticker with Collapsed Cash:**
+```javascript
+config: {
+  displayMode: "ticker",
+  tickerSpeed: 50,
+  tickerStartDelay: 3000,
+  tickerCollapseCash: true
 }
 ```
 
@@ -465,6 +480,7 @@ config: {
 config: {
   displayMode: "ticker",
   tickerSpeed: 40,
+  tickerStartDelay: 3000,
   showCharts: true,
   chartMode: "combined",
   chartPeriod: "1W"

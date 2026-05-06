@@ -268,6 +268,39 @@ class TwelveDataProvider extends BaseProvider {
       left: this.creditsLeft
     };
   }
+
+  async fetchMarketState(params) {
+    var self = this;
+
+    if (!this.credentials) {
+      throw new Error("Credentials not loaded");
+    }
+
+    try {
+      var response = await this.retryWithBackoff(
+        function() {
+          return self.makeAPIRequest("market_state", params || {});
+        },
+        "Market State Fetch"
+      );
+
+      if (!Array.isArray(response)) {
+        throw new Error("Invalid market_state response");
+      }
+
+      return response;
+    } catch (error) {
+      var classified = this.classifyError(error);
+
+      if (classified.code === "RATE_LIMIT") {
+        var rateLimitError = new Error("Rate limit exceeded for market_state");
+        rateLimitError.code = "RATE_LIMIT";
+        throw rateLimitError;
+      }
+
+      throw error;
+    }
+  }
 }
 
 module.exports = TwelveDataProvider;

@@ -26,7 +26,9 @@ Module.register("MMM-Fintech", {
     fontSize: 100,
     displayMode: "table",
     tickerSpeed: 50,
+    tickerStartDelay: 3000,
     tickerPause: 0,
+    tickerCollapseCash: false,
     marketHours: {
       stock: {
         enabled: true,
@@ -102,7 +104,9 @@ Module.register("MMM-Fintech", {
     this.marketStatus = {};
     this.tickerAnimationId = null;
     this.tickerPauseInterval = null;
+    this.tickerStartTimeout = null;
     this.historyRequested = false;
+    this.pendingChartRender = null;
 
     this.sendSocketNotification("MMM-FINTECH_INIT", {
       config: this.config
@@ -120,13 +124,10 @@ Module.register("MMM-Fintech", {
         var self = this;
         setTimeout(function () {
           self.startTickerAnimation();
-        }, 200);
+        }, 50);
       }
       if (this.config.showCharts && this.chartData.length > 0) {
-        var self = this;
-        setTimeout(function () {
-          self.renderCharts();
-        }, 300);
+        this.refreshChartsOnPageShow();
       }
     }
   },
@@ -137,6 +138,10 @@ Module.register("MMM-Fintech", {
 
   getScripts: function () {
     return ["https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"];
+  },
+
+  getModuleDomRoot: function () {
+    return document.getElementById(this.identifier);
   },
 
   getColumnCount: function () {
@@ -246,25 +251,29 @@ Module.register("MMM-Fintech", {
     tickerTrack.appendChild(totalItem);
 
     var sortedHoldings = this.sortHoldings(displayHoldings);
+    var cashHoldings = [];
+    var nonCashHoldings = [];
 
     for (var i = 0; i < sortedHoldings.length; i++) {
-      var h = sortedHoldings[i];
-      var item = document.createElement("span");
-      item.className = "mmm-fintech-ticker-item";
+      if (this.isCashEquivalentHolding(sortedHoldings[i])) {
+        cashHoldings.push(sortedHoldings[i]);
+      } else {
+        nonCashHoldings.push(sortedHoldings[i]);
+      }
+    }
 
-      var change = h.change24h || 0;
-      var changeClass = change > 0 ? "positive" : change < 0 ? "negative" : "";
-      var changeStr = this.formatChangePercent(change);
+    if (cashHoldings.length > 0) {
+      if (this.config.tickerCollapseCash) {
+        tickerTrack.appendChild(this.buildTickerCashItem(cashHoldings));
+      } else {
+        for (var cashIndex = 0; cashIndex < cashHoldings.length; cashIndex++) {
+          tickerTrack.appendChild(this.buildTickerHoldingItem(cashHoldings[cashIndex], true));
+        }
+      }
+    }
 
-      var isClosed = this.isMarketClosedForHolding(h);
-      var closedIndicator = isClosed ? " <span class='ticker-closed'>(Closed)</span>" : "";
-
-      item.innerHTML = "<span class='ticker-symbol'>" + h.symbol + ":</span> " +
-        "<span class='ticker-price'>" + this.formatCurrency(h.price || 0) + "</span> " +
-        "<span class='ticker-change " + changeClass + "'>" + changeStr + "</span>" +
-        closedIndicator;
-
-      tickerTrack.appendChild(item);
+    for (var holdingIndex = 0; holdingIndex < nonCashHoldings.length; holdingIndex++) {
+      tickerTrack.appendChild(this.buildTickerHoldingItem(nonCashHoldings[holdingIndex], false));
     }
 
     var forexToShow = this.getDisplayForex();
@@ -288,6 +297,8 @@ Module.register("MMM-Fintech", {
 
     var tickerContent = tickerTrack.cloneNode(true);
     tickerContent.className = "mmm-fintech-ticker-track mmm-fintech-ticker-track-clone";
+    tickerTrack.style.animationPlayState = "paused";
+    tickerContent.style.animationPlayState = "paused";
     
     tickerContainer.appendChild(tickerTrack);
     tickerContainer.appendChild(tickerContent);
@@ -306,6 +317,151 @@ Module.register("MMM-Fintech", {
     return wrapper;
   },
 
+  isCashEquivalentHolding: function (holding) {
+    return !!holding && holding.type === "cash";
+  },
+
+  buildTickerHoldingItem: function (holding, showValueForCash) {
+    var item = document.createElement("span");
+    item.className = "mmm-fintech-ticker-item";
+
+    var isCashEquivalent = this.isCashEquivalentHolding(holding);
+    var change = holding.change24h || 0;
+    var changeClass = change > 0 ? "positive" : change < 0 ? "negative" : "";
+    var changeStr = this.formatChangePercent(change);
+    var isClosed = !isCashEquivalent && this.isMarketClosedForHolding(holding);
+    var closedIndicator = isClosed ? " <span class='ticker-closed'>(Closed)</span>" : "";
+    var displayValue = showValueForCash ? this.formatCurrency(holding.value || 0) : this.formatCurrency(holding.price || 0);
+    var changeMarkup = (!isCashEquivalent && changeStr) ?
+      "<span class='ticker-change " + changeClass + "'>" + changeStr + "</span>" :
+      "";
+
+    item.innerHTML = "<span class='ticker-symbol'>" + holding.symbol + ":</span> " +
+      "<span class='ticker-price'>" + displayValue + "</span> " +
+      changeMarkup +
+      closedIndicator;
+
+    return item;
+  },
+
+  buildTickerCashItem: function (cashHoldings) {
+    var item = document.createElement("span");
+    item.className = "mmm-fintech-ticker-item mmm-fintech-ticker-cash";
+
+    var totalCashValue = 0;
+    for (var i = 0; i < cashHoldings.length; i++) {
+      totalCashValue += cashHoldings[i].value || 0;
+    }
+
+    item.innerHTML = "<span class='ticker-symbol'>Cash:</span> " +
+      "<span class='ticker-price'>" + this.formatCurrency(totalCashValue) + "</span>";
+
+    return item;
+  },
+
+  getMarketSchedule: function (assetType) {
+    var schedules = (this.config && this.config.marketHours) || {};
+    return schedules[assetType] || null;
+  },
+
+  parseTimeToMinutes: function (timeStr) {
+    if (!timeStr) {
+      return null;
+    }
+
+    var parts = timeStr.split(":");
+    if (parts.length < 2) {
+      return null;
+    }
+
+    var hours = parseInt(parts[0], 10);
+    var minutes = parseInt(parts[1], 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+      return null;
+    }
+
+    return (hours * 60) + minutes;
+  },
+
+  getZonedTimeParts: function (timezone) {
+    var formatter = new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "short",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false
+    });
+
+    var parts = formatter.formatToParts(new Date());
+    var result = {};
+    for (var i = 0; i < parts.length; i++) {
+      result[parts[i].type] = parts[i].value;
+    }
+
+    var weekdayMap = {
+      Sun: 0,
+      Mon: 1,
+      Tue: 2,
+      Wed: 3,
+      Thu: 4,
+      Fri: 5,
+      Sat: 6
+    };
+
+    return {
+      weekday: weekdayMap[result.weekday],
+      minutes: parseInt(result.hour, 10) * 60 + parseInt(result.minute, 10)
+    };
+  },
+
+  isForexMarketOpen: function (schedule, zonedParts) {
+    var sundayOpen = this.parseTimeToMinutes(schedule.sundayOpen);
+    var fridayClose = this.parseTimeToMinutes(schedule.fridayClose);
+
+    if (sundayOpen === null || fridayClose === null) {
+      return true;
+    }
+
+    var day = zonedParts.weekday;
+    var minutes = zonedParts.minutes;
+
+    if (day === 6) {
+      return false;
+    }
+
+    if (day === 0) {
+      return minutes >= sundayOpen;
+    }
+
+    if (day === 5) {
+      return minutes < fridayClose;
+    }
+
+    return true;
+  },
+
+  isWithinMarketWindow: function (schedule, zonedParts) {
+    var openMinutes = this.parseTimeToMinutes(schedule.open);
+    var closeMinutes = this.parseTimeToMinutes(schedule.close);
+
+    if (openMinutes === null || closeMinutes === null) {
+      return true;
+    }
+
+    var day = zonedParts.weekday;
+    var minutes = zonedParts.minutes;
+    var tradingDays = schedule.days || [1, 2, 3, 4, 5];
+
+    if (tradingDays.indexOf(day) === -1) {
+      return false;
+    }
+
+    return minutes >= openMinutes && minutes < closeMinutes;
+  },
+
   isMarketClosedForHolding: function (holding) {
     var holdingType = holding.type || "crypto";
 
@@ -317,7 +473,19 @@ Module.register("MMM-Fintech", {
       return !this.marketStatus[holdingType];
     }
 
-    return false;
+    var schedule = this.getMarketSchedule(holdingType);
+    if (!schedule || schedule.enabled === false) {
+      return false;
+    }
+
+    var timezone = schedule.timezone || "America/New_York";
+    var zonedParts = this.getZonedTimeParts(timezone);
+
+    if (holdingType === "forex") {
+      return !this.isForexMarketOpen(schedule, zonedParts);
+    }
+
+    return !this.isWithinMarketWindow(schedule, zonedParts);
   },
 
   formatChangePercent: function (change) {
@@ -330,8 +498,13 @@ Module.register("MMM-Fintech", {
   },
 
   startTickerAnimation: function () {
-    var container = document.querySelector(".mmm-fintech-ticker-container");
-    var track = document.querySelector(".mmm-fintech-ticker-track");
+    var root = this.getModuleDomRoot();
+    if (!root) {
+      return;
+    }
+
+    var container = root.querySelector(".mmm-fintech-ticker-container");
+    var track = root.querySelector(".mmm-fintech-ticker-track");
 
     if (!container || !track) {
       return;
@@ -342,21 +515,35 @@ Module.register("MMM-Fintech", {
       return;
     }
 
-    var speed = this.config.tickerSpeed;
+    var speed = Math.max(1, Number(this.config.tickerSpeed) || 50);
     var duration = (trackWidth / speed);
 
-    var tracks = document.querySelectorAll(".mmm-fintech-ticker-track, .mmm-fintech-ticker-track-clone");
+    var tracks = root.querySelectorAll(".mmm-fintech-ticker-track, .mmm-fintech-ticker-track-clone");
     tracks.forEach(function(t) {
       t.style.animationDuration = duration + "s";
+      t.style.animationPlayState = "paused";
     });
+
+    if (this.tickerStartTimeout) {
+      clearTimeout(this.tickerStartTimeout);
+      this.tickerStartTimeout = null;
+    }
 
     if (this.tickerPauseInterval) {
       clearInterval(this.tickerPauseInterval);
       this.tickerPauseInterval = null;
     }
 
+    var self = this;
+    var startDelay = Math.max(0, Number(this.config.tickerStartDelay) || 0);
+
+    var beginAnimation = function () {
+      tracks.forEach(function(t) {
+        t.style.animationPlayState = "running";
+      });
+    };
+
     if (this.config.tickerPause > 0) {
-      var self = this;
       var items = track.querySelectorAll(".mmm-fintech-ticker-item");
       
       if (items.length === 0) {
@@ -367,17 +554,42 @@ Module.register("MMM-Fintech", {
       var itemScrollTime = (averageItemWidth / speed) * 1000;
       var cycleTime = itemScrollTime + this.config.tickerPause;
 
-      this.tickerPauseInterval = setInterval(function() {
-        tracks.forEach(function(t) {
-          t.style.animationPlayState = "paused";
-        });
+      var startPauseLoop = function () {
+        self.tickerPauseInterval = setInterval(function() {
+          tracks.forEach(function(t) {
+            t.style.animationPlayState = "paused";
+          });
 
-        setTimeout(function() {
+          setTimeout(function() {
+            tracks.forEach(function(t) {
+              t.style.animationPlayState = "running";
+            });
+          }, self.config.tickerPause);
+        }, cycleTime);
+      };
+
+      if (startDelay > 0) {
+        this.tickerStartTimeout = setTimeout(function() {
           tracks.forEach(function(t) {
             t.style.animationPlayState = "running";
           });
-        }, self.config.tickerPause);
-      }, cycleTime);
+          startPauseLoop();
+          self.tickerStartTimeout = null;
+        }, startDelay);
+      } else {
+        beginAnimation();
+        startPauseLoop();
+      }
+      return;
+    }
+
+    if (startDelay > 0) {
+      this.tickerStartTimeout = setTimeout(function() {
+        beginAnimation();
+        self.tickerStartTimeout = null;
+      }, startDelay);
+    } else {
+      beginAnimation();
     }
   },
 
@@ -743,7 +955,6 @@ Module.register("MMM-Fintech", {
   },
 
   buildChartSection: function () {
-    var self = this;
     var section = document.createElement("div");
     section.className = "mmm-fintech-chart-section";
 
@@ -773,7 +984,7 @@ Module.register("MMM-Fintech", {
       var chartContainer = document.createElement("div");
       chartContainer.className = "mmm-fintech-chart-container";
       var canvas = document.createElement("canvas");
-      canvas.id = "mmm-fintech-chart-main";
+      canvas.dataset.chartRole = "main";
       chartContainer.appendChild(canvas);
       section.appendChild(chartContainer);
     } else if (chartMode === "separate") {
@@ -784,7 +995,7 @@ Module.register("MMM-Fintech", {
       tradLabel.innerHTML = "Traditional";
       tradContainer.appendChild(tradLabel);
       var tradCanvas = document.createElement("canvas");
-      tradCanvas.id = "mmm-fintech-chart-traditional";
+      tradCanvas.dataset.chartRole = "traditional";
       tradContainer.appendChild(tradCanvas);
       section.appendChild(tradContainer);
 
@@ -795,24 +1006,52 @@ Module.register("MMM-Fintech", {
       cryptoLabel.innerHTML = "Crypto";
       cryptoContainer.appendChild(cryptoLabel);
       var cryptoCanvas = document.createElement("canvas");
-      cryptoCanvas.id = "mmm-fintech-chart-crypto";
+      cryptoCanvas.dataset.chartRole = "crypto";
       cryptoContainer.appendChild(cryptoCanvas);
       section.appendChild(cryptoContainer);
     } else {
       var container = document.createElement("div");
       container.className = "mmm-fintech-chart-container";
       var tradOnlyCanvas = document.createElement("canvas");
-      tradOnlyCanvas.id = "mmm-fintech-chart-main";
+      tradOnlyCanvas.dataset.chartRole = "main";
       container.appendChild(tradOnlyCanvas);
       section.appendChild(container);
     }
 
-    var renderSelf = this;
-    setTimeout(function () {
-      renderSelf.renderCharts();
-    }, 100);
-
     return section;
+  },
+
+  scheduleChartRender: function (delay) {
+    var self = this;
+
+    if (this.pendingChartRender) {
+      clearTimeout(this.pendingChartRender);
+    }
+
+    this.pendingChartRender = setTimeout(function () {
+      self.pendingChartRender = null;
+      self.renderCharts();
+    }, delay || 0);
+  },
+
+  refreshChartsOnPageShow: function () {
+    var hasChartInstance = false;
+
+    if (this.chartInstance) {
+      this.chartInstance.resize();
+      this.chartInstance.update("none");
+      hasChartInstance = true;
+    }
+
+    if (this.cryptoChartInstance) {
+      this.cryptoChartInstance.resize();
+      this.cryptoChartInstance.update("none");
+      hasChartInstance = true;
+    }
+
+    if (!hasChartInstance) {
+      this.scheduleChartRender(50);
+    }
   },
 
   renderCharts: function () {
@@ -824,18 +1063,23 @@ Module.register("MMM-Fintech", {
     }
 
     if (chartMode === "combined") {
-      this.renderChart("mmm-fintech-chart-main", data, "totalValue", "Portfolio Value");
+      this.renderChart("main", data, "totalValue", "Portfolio Value");
     } else if (chartMode === "separate") {
-      this.renderChart("mmm-fintech-chart-traditional", data, "traditionalValue", "Traditional");
-      this.renderChart("mmm-fintech-chart-crypto", data, "cryptoValue", "Crypto", true);
+      this.renderChart("traditional", data, "traditionalValue", "Traditional");
+      this.renderChart("crypto", data, "cryptoValue", "Crypto", true);
     } else {
-      this.renderChart("mmm-fintech-chart-main", data, "traditionalValue", "Traditional Investments");
+      this.renderChart("main", data, "traditionalValue", "Traditional Investments");
     }
   },
 
-  renderChart: function (canvasId, data, valueKey, label, isCrypto) {
+  renderChart: function (canvasRole, data, valueKey, label, isCrypto) {
     var self = this;
-    var canvas = document.getElementById(canvasId);
+    var root = this.getModuleDomRoot();
+    if (!root) {
+      return;
+    }
+
+    var canvas = root.querySelector('[data-chart-role="' + canvasRole + '"]');
     if (!canvas) {
       return;
     }
@@ -869,11 +1113,6 @@ Module.register("MMM-Fintech", {
     var gradient = ctx.createLinearGradient(0, 0, 0, canvas.height || 150);
     gradient.addColorStop(0, gradientColor + "0.4)");
     gradient.addColorStop(1, gradientColor + "0.05)");
-
-    var existingChart = isCrypto ? this.cryptoChartInstance : this.chartInstance;
-    if (existingChart) {
-      existingChart.destroy();
-    }
 
     var datasets = [{
       label: label,
@@ -915,6 +1154,21 @@ Module.register("MMM-Fintech", {
       });
     }
 
+    var existingChart = isCrypto ? this.cryptoChartInstance : this.chartInstance;
+
+    if (existingChart && existingChart.canvas === canvas) {
+      existingChart.data.labels = labels;
+      existingChart.data.datasets = datasets;
+      existingChart.options.scales.y.min = yMin;
+      existingChart.options.scales.y.max = yMax;
+      existingChart.update("none");
+      return;
+    }
+
+    if (existingChart) {
+      existingChart.destroy();
+    }
+
     var newChart = new Chart(ctx, {
       type: "line",
       data: {
@@ -922,6 +1176,7 @@ Module.register("MMM-Fintech", {
         datasets: datasets
       },
       options: {
+        animation: false,
         responsive: true,
         maintainAspectRatio: false,
         layout: {
@@ -1126,7 +1381,8 @@ Module.register("MMM-Fintech", {
 
     this.selectedPeriod = period;
 
-    var buttons = document.querySelectorAll(".mmm-fintech-period-btn");
+    var root = this.getModuleDomRoot();
+    var buttons = root ? root.querySelectorAll(".mmm-fintech-period-btn") : [];
     buttons.forEach(function(btn) {
       btn.classList.remove("active");
       if (btn.dataset.period === period) {
@@ -1154,7 +1410,7 @@ Module.register("MMM-Fintech", {
       this.snaptradeAuthError = payload.snaptradeAuthError || false;
       this.snaptradeTimeoutError = payload.snaptradeTimeoutError || false;
       this.marketStatus = payload.marketStatus || {};
-      this.updateDom();
+      this.updateDom(0);
 
       if (this.config.showCharts && !this.historyRequested) {
         this.historyRequested = true;
@@ -1171,12 +1427,9 @@ Module.register("MMM-Fintech", {
       }
       if (this.config.showCharts) {
         Log.info("[MMM-Fintech] Updating DOM to include chart canvas elements");
-        this.updateDom();
-        var self = this;
-        setTimeout(function() {
-          Log.info("[MMM-Fintech] Rendering charts now");
-          self.renderCharts();
-        }, 100);
+        this.updateDom(0);
+        Log.info("[MMM-Fintech] Rendering charts now");
+        this.scheduleChartRender(50);
       }
     }
   }

@@ -21,6 +21,8 @@ module.exports = NodeHelper.create({
     this.conversionRate = 1;
     this.postClosePollByType = {};
     this.lastMarketStatusLog = {};
+    this.marketStateCache = null;
+    this.marketStateTimeout = null;
     this.historyManager = null;
     this.pendingHistoryPeriods = [];
     this.runtimeStarted = false;
@@ -43,6 +45,10 @@ module.exports = NodeHelper.create({
 
   clearError: function() {
     this.lastError = null;
+  },
+
+  logWarning: function(category, message, details) {
+    this.log("WARN [" + category + "] " + message + (details ? " - " + details : ""));
   },
 
 
@@ -70,18 +76,23 @@ module.exports = NodeHelper.create({
   },
 
   getCurrentMarketStatus: function() {
+    var usEquityStatus = this.getCachedUSEquityMarketOpen();
+
     return {
-      stock: this.canUpdateAssetType("stock"),
-      etf: this.canUpdateAssetType("etf"),
-      mutual_fund: this.canUpdateAssetType("mutual_fund"),
+      stock: usEquityStatus !== null ? usEquityStatus : this.canUpdateAssetType("stock"),
+      etf: usEquityStatus !== null ? usEquityStatus : this.canUpdateAssetType("etf"),
+      mutual_fund: usEquityStatus !== null ? usEquityStatus : this.canUpdateAssetType("mutual_fund"),
       forex: this.canUpdateAssetType("forex")
     };
   },
-  socketNotificationReceived: function(notification, payload) {
+  socketNotificationReceived: async function(notification, payload) {
     if (notification === "MMM-FINTECH_INIT") {
       this.config = payload.config;
       this.ensureHistoryManager(payload.config);
       this.initProviders();
+      if (!this.marketStateCache) {
+        await this.refreshMarketStateWithTimeout(1500);
+      }
       this.loadCachedData();
       this.ensureRuntimeStarted();
       this.syncIfStale();
@@ -269,8 +280,150 @@ module.exports = NodeHelper.create({
     }
 
     this.runtimeStarted = true;
+    this.refreshMarketState();
     this.schedulePriceUpdates();
     this.scheduleNextHoldingsSync();
+  },
+
+  getCachedUSEquityMarketOpen: function() {
+    if (!this.marketStateCache || typeof this.marketStateCache.isOpen !== "boolean") {
+      return null;
+    }
+
+    return this.marketStateCache.isOpen;
+  },
+
+  selectPrimaryUSEquityState: function(states) {
+    if (!Array.isArray(states) || states.length === 0) {
+      return null;
+    }
+
+    var preferredCodes = ["XNYS", "XNAS", "XNGS", "XNMS", "XNCM"];
+
+    for (var i = 0; i < preferredCodes.length; i++) {
+      for (var j = 0; j < states.length; j++) {
+        if (states[j] && states[j].code === preferredCodes[i]) {
+          return states[j];
+        }
+      }
+    }
+
+    return states[0];
+  },
+
+  parseClockDurationToMs: function(durationStr) {
+    if (!durationStr || typeof durationStr !== "string") {
+      return null;
+    }
+
+    var parts = durationStr.split(":");
+    if (parts.length !== 3) {
+      return null;
+    }
+
+    var hours = parseInt(parts[0], 10);
+    var minutes = parseInt(parts[1], 10);
+    var seconds = parseInt(parts[2], 10);
+    if (Number.isNaN(hours) || Number.isNaN(minutes) || Number.isNaN(seconds)) {
+      return null;
+    }
+
+    return ((hours * 60 * 60) + (minutes * 60) + seconds) * 1000;
+  },
+
+  getNextMarketStateRefreshDelay: function(state) {
+    var fallbackMs = 15 * 60 * 1000;
+
+    if (!state) {
+      return fallbackMs;
+    }
+
+    var nextTransitionMs = state.is_market_open ?
+      this.parseClockDurationToMs(state.time_to_close) :
+      this.parseClockDurationToMs(state.time_to_open);
+
+    if (nextTransitionMs === null) {
+      return fallbackMs;
+    }
+
+    return Math.max(60 * 1000, nextTransitionMs + (60 * 1000));
+  },
+
+  scheduleNextMarketStateRefresh: function(delayMs) {
+    var self = this;
+
+    if (this.marketStateTimeout) {
+      clearTimeout(this.marketStateTimeout);
+    }
+
+    this.marketStateTimeout = setTimeout(function() {
+      self.marketStateTimeout = null;
+      self.refreshMarketState();
+    }, delayMs);
+  },
+
+  refreshMarketStateWithTimeout: async function(timeoutMs) {
+    var self = this;
+    var timeout = typeof timeoutMs === "number" ? timeoutMs : 1500;
+    var timeoutId = null;
+    var settled = false;
+
+    var timeoutPromise = new Promise(function(resolve) {
+      timeoutId = setTimeout(function() {
+        if (settled || self.marketStateCache) {
+          settled = true;
+          resolve(false);
+          return;
+        }
+        settled = true;
+        resolve(false);
+      }, timeout);
+    });
+
+    return Promise.race([
+      this.refreshMarketState().then(function(result) {
+        if (!settled) {
+          settled = true;
+        }
+        if (timeoutId) {
+          clearTimeout(timeoutId);
+          timeoutId = null;
+        }
+        return result;
+      }),
+      timeoutPromise
+    ]);
+  },
+
+  refreshMarketState: async function() {
+    if (!this.providers.twelvedata || typeof this.providers.twelvedata.fetchMarketState !== "function") {
+      return false;
+    }
+
+    try {
+      var states = await this.providers.twelvedata.fetchMarketState({ country: "United States" });
+      var primaryState = this.selectPrimaryUSEquityState(states);
+
+      if (primaryState && typeof primaryState.is_market_open === "boolean") {
+        this.marketStateCache = {
+          source: primaryState.code || primaryState.name || "US",
+          isOpen: primaryState.is_market_open,
+          fetchedAt: new Date().toISOString(),
+          raw: primaryState
+        };
+        this.log("Twelve Data market_state: " + this.marketStateCache.source + " is " + (this.marketStateCache.isOpen ? "open" : "closed"));
+        this.applyMarketStatusToCache();
+        this.scheduleNextMarketStateRefresh(this.getNextMarketStateRefreshDelay(primaryState));
+        return true;
+      }
+
+      this.logWarning("MARKET_STATE", "Twelve Data market_state returned no usable US exchange state");
+    } catch (error) {
+      this.logWarning("MARKET_STATE", "Failed to refresh Twelve Data market_state", error.message);
+    }
+
+    this.scheduleNextMarketStateRefresh(15 * 60 * 1000);
+    return false;
   },
 
   getMarketSchedule: function(assetType) {
@@ -407,6 +560,11 @@ module.exports = NodeHelper.create({
   },
 
   canUpdateAssetType: function(assetType) {
+    var cachedUSEquityStatus = this.getCachedUSEquityMarketOpen();
+    if ((assetType === "stock" || assetType === "etf" || assetType === "mutual_fund") && cachedUSEquityStatus !== null) {
+      return cachedUSEquityStatus;
+    }
+
     var schedule = this.getMarketSchedule(assetType);
 
     if (!schedule || schedule.enabled === false) {
@@ -444,6 +602,24 @@ module.exports = NodeHelper.create({
     if (now - lastLog > 5 * 60 * 1000) {
       this.log(message);
       this.lastMarketStatusLog[assetType] = now;
+    }
+  },
+
+  applyMarketStatusToCache: function() {
+    if (!fs.existsSync(this.dataPath)) {
+      return;
+    }
+
+    try {
+      var cacheData = fs.readFileSync(this.dataPath, "utf8");
+      var cache = JSON.parse(cacheData);
+      cache.marketStatus = this.getCurrentMarketStatus();
+      cache.marketStatusFetchedAt = this.marketStateCache ? this.marketStateCache.fetchedAt : null;
+      cache.marketStatusSource = this.marketStateCache ? this.marketStateCache.source : "schedule-fallback";
+      fs.writeFileSync(this.dataPath, JSON.stringify(cache, null, 2));
+      this.sendSocketNotification("MMM-FINTECH_DATA", cache);
+    } catch (error) {
+      this.logWarning("MARKET_STATE", "Failed to apply refreshed market status to cache", error.message);
     }
   },
 
@@ -1115,6 +1291,9 @@ module.exports = NodeHelper.create({
       try {
         var data = fs.readFileSync(this.dataPath, "utf8");
         var cache = JSON.parse(data);
+        cache.marketStatus = this.getCurrentMarketStatus();
+        cache.marketStatusFetchedAt = this.marketStateCache ? this.marketStateCache.fetchedAt : null;
+        cache.marketStatusSource = this.marketStateCache ? this.marketStateCache.source : "schedule-fallback";
         this.log("Loaded cached data");
         this.sendSocketNotification("MMM-FINTECH_DATA", cache);
       } catch (error) {
