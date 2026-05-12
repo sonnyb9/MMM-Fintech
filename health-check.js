@@ -6,6 +6,7 @@ const path = require("path");
 var tests = [
   { name: "SnapTrade Provider", script: "test-snaptrade-provider.js" },
   { name: "Twelve Data Provider", script: "test-twelvedata.js" },
+  { name: "EODHD Provider", script: "test-eodhd.js" },
   { name: "Full Sync Flow", script: "test-full-sync.js" },
   { name: "Cost Basis & Gain/Loss", script: "test-costbasis.js" }
 ];

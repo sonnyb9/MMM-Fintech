@@ -1147,6 +1147,11 @@ module.exports = NodeHelper.create({
       var cache = JSON.parse(cacheData);
       var updatedCount = 0;
       var skippedCount = 0;
+      var attemptedSymbols = {};
+      var priorInvalidSymbols = Array.isArray(cache.invalidSymbols) ? cache.invalidSymbols.slice() : [];
+      var priorRateLimitedSymbols = Array.isArray(cache.rateLimitedSymbols) ? cache.rateLimitedSymbols.slice() : [];
+      var currentInvalidSymbols = [];
+      var currentRateLimitedSymbols = [];
 
       var marketDecisions = {};
 
@@ -1163,6 +1168,8 @@ module.exports = NodeHelper.create({
           skippedCount++;
           continue;
         }
+
+        attemptedSymbols[holding.symbol] = true;
 
         if (this.applyManualPriceOverride(holding)) {
           updatedCount++;
@@ -1191,13 +1198,13 @@ module.exports = NodeHelper.create({
           updatedCount++;
         } catch (error) {
           if (error.code === "INVALID_SYMBOL") {
-            if (this.invalidSymbols.indexOf(holding.symbol) === -1) {
-              this.invalidSymbols.push(holding.symbol);
+            if (currentInvalidSymbols.indexOf(holding.symbol) === -1) {
+              currentInvalidSymbols.push(holding.symbol);
             }
             this.logError("INVALID_SYMBOL", "Invalid or unavailable symbol", holding.symbol);
           } else if (error.code === "RATE_LIMIT") {
-            if (this.rateLimitedSymbols.indexOf(holding.symbol) === -1) {
-              this.rateLimitedSymbols.push(holding.symbol);
+            if (currentRateLimitedSymbols.indexOf(holding.symbol) === -1) {
+              currentRateLimitedSymbols.push(holding.symbol);
             }
             this.logError("RATE_LIMIT", "Rate limit exceeded for symbol", holding.symbol);
           } else {
@@ -1205,6 +1212,13 @@ module.exports = NodeHelper.create({
           }
         }
       }
+
+      this.invalidSymbols = priorInvalidSymbols.filter(function(symbol) {
+        return !attemptedSymbols[symbol];
+      }).concat(currentInvalidSymbols);
+      this.rateLimitedSymbols = priorRateLimitedSymbols.filter(function(symbol) {
+        return !attemptedSymbols[symbol];
+      }).concat(currentRateLimitedSymbols);
 
       if (!isCrypto) {
         var manualData = this.loadManualData();

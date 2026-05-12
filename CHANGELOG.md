@@ -2,6 +2,28 @@
 
 All notable changes to MMM-Fintech are documented in this file.
 
+## [Unreleased]
+
+### Fixed
+- Preserve a legitimate `0.00%` portfolio 24h change in the frontend instead of dropping it as a falsy value
+- Make `chartMode: "exclude-crypto"` an explicit frontend path again instead of relying on a generic fallback branch
+- Rebuild invalid-symbol and rate-limit warnings during price refreshes so resolved symbols clear cleanly once their asset class is refreshed
+- Treat SnapTrade-reported Coinbase `USD` balances as cash so the module stops trying to price them as crypto symbols
+
+### Added
+- `test-eodhd.js` for direct mutual-fund pricing verification when EODHD is configured
+- EODHD initialization coverage in `test-full-sync.js`
+
+### Changed
+- `test-twelvedata.js` now focuses on the asset classes Twelve Data is the primary pricing path for in this module: stocks, ETFs, and forex
+
+### Documentation
+- Rewrote the contributor, architecture, and SnapTrade docs to match the current provider stack, chart behavior, and repo workflow
+- Updated README diagnostics, configuration notes, and file inventory to match the live codebase
+
+### Cleanup
+- Removed tracked backup/debug artifacts and legacy SnapTrade helper scripts that no longer reflect the supported SDK-based path
+
 ## [0.9.0] - 2026-02-10
 
 ### Added
@@ -11,7 +33,7 @@ All notable changes to MMM-Fintech are documented in this file.
   - Manual holdings guidance with README reference
   - Streamlines setup process from 5+ separate scripts to one wizard
 - **Unified Health Check**: New `health-check.js` diagnostic runner
-  - Runs all four test scripts in sequence (SnapTrade, Twelve Data, Full Sync, Cost Basis)
+  - Runs the bundled diagnostic scripts in sequence with a summary report
   - Provides pass/fail summary with timing information
   - Color-coded output for quick status assessment
   - Simplifies troubleshooting from choosing between 4 scripts to one command
@@ -130,7 +152,7 @@ All notable changes to MMM-Fintech are documented in this file.
 - Coinbase provider initialization no longer required (optional)
 
 ### Documentation
-- AI-CONTEXT.md rewritten for v0.6.0 with SnapTrade details
+- Assistant-context notes were refreshed for the v0.6.0 SnapTrade rollout
 - Removed patch workflow documentation (no longer used)
 
 ## [0.5.0] - 2025-01-05
@@ -206,7 +228,7 @@ All notable changes to MMM-Fintech are documented in this file.
 
 ### Documentation
 - README.md updated with market hours configuration and all new options
-- AI-CONTEXT.md updated to v0.5.0 with market hours implementation details
+- Assistant-context notes were refreshed for the v0.5.0 market-hours rollout
 - ROADMAP.md Phase 3.1 marked complete, Phase 4 (charts) added
 
 ## [0.4.0] - 2025-12-29

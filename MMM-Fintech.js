@@ -1009,13 +1009,20 @@ Module.register("MMM-Fintech", {
       cryptoCanvas.dataset.chartRole = "crypto";
       cryptoContainer.appendChild(cryptoCanvas);
       section.appendChild(cryptoContainer);
-    } else {
+    } else if (chartMode === "exclude-crypto") {
       var container = document.createElement("div");
       container.className = "mmm-fintech-chart-container";
       var tradOnlyCanvas = document.createElement("canvas");
       tradOnlyCanvas.dataset.chartRole = "main";
       container.appendChild(tradOnlyCanvas);
       section.appendChild(container);
+    } else {
+      var fallbackContainer = document.createElement("div");
+      fallbackContainer.className = "mmm-fintech-chart-container";
+      var fallbackCanvas = document.createElement("canvas");
+      fallbackCanvas.dataset.chartRole = "main";
+      fallbackContainer.appendChild(fallbackCanvas);
+      section.appendChild(fallbackContainer);
     }
 
     return section;
@@ -1067,8 +1074,10 @@ Module.register("MMM-Fintech", {
     } else if (chartMode === "separate") {
       this.renderChart("traditional", data, "traditionalValue", "Traditional");
       this.renderChart("crypto", data, "cryptoValue", "Crypto", true);
-    } else {
+    } else if (chartMode === "exclude-crypto") {
       this.renderChart("main", data, "traditionalValue", "Traditional Investments");
+    } else {
+      this.renderChart("main", data, "totalValue", "Portfolio Value");
     }
   },
 
@@ -1401,7 +1410,7 @@ Module.register("MMM-Fintech", {
       this.totalValue = payload.totalValue || 0;
       this.totalCostBasis = payload.totalCostBasis || 0;
       this.totalGainLossPercent = payload.totalGainLossPercent;
-      this.totalChange24h = payload.totalChange24h || null;
+      this.totalChange24h = payload.totalChange24h !== undefined && payload.totalChange24h !== null ? payload.totalChange24h : null;
       this.lastUpdated = payload.lastUpdated || null;
       this.lastPriceUpdate = payload.lastPriceUpdate || null;
       this.hasError = payload.hasError || false;

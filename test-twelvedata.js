@@ -15,14 +15,13 @@ async function test() {
   console.log("Provider initialized successfully.\n");
 
   var testSymbols = [
-    { symbol: "PRCOX", type: "mutual_fund", name: "T. Rowe Price U.S. Equity Research" },
     { symbol: "NVDA", type: "stock", name: "NVIDIA" },
     { symbol: "MSFT", type: "stock", name: "Microsoft" },
     { symbol: "BRK.B", type: "stock", name: "Berkshire Hathaway B" },
     { symbol: "RZLV", type: "stock", name: "Rezolve AI" }
   ];
 
-  console.log("=== Stock/ETF/Mutual Fund Tests ===\n");
+  console.log("=== Stock/ETF Tests ===\n");
 
   var results = [];
 

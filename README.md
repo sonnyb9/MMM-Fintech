@@ -34,7 +34,7 @@ If you need to manually account for pending settlements, you can add the expecte
 - **Portfolio Total**: Displays total value in configurable currency
 - **Forex Rates**: Display exchange rates with optional inverse pairs
 - **Currency Conversion**: Display values in any currency (USD, EUR, GBP, etc.)
-- **Privacy Mode**: Hide quantity, value, and total
+- **Privacy Mode**: Hide quantity and total while keeping price and 24h change visible
 - **Secure Credentials**: AES-256-GCM encrypted API keys
 - **Error Indicators**: Visual warnings when sync fails
 - **Configurable Sorting**: By value or alphabetically
@@ -301,38 +301,38 @@ Create `manual-holdings.json` in the module folder for any holdings not covered 
 
 ## Configuration Options
 
-| Option | Default | Description |
-|--------|---------|-------------|
-| `title` | `"Portfolio"` | Header text |
-| `fontSize` | `100` | Font size as percentage (e.g., 80 for smaller, 120 for larger) |
-| `displayMode` | `"table"` | Display mode: `"table"` (default) or `"ticker"` for horizontal scrolling |
-| `tickerSpeed` | `50` | Ticker scroll speed in pixels per second |
-| `tickerStartDelay` | `3000` | Milliseconds to hold the ticker still before scrolling starts |
-| `tickerPause` | `0` | Milliseconds to pause on each item (0 = no pause) |
-| `tickerCollapseCash` | `false` | When `true`, combines all cash-equivalent holdings into a single `Cash` ticker item |
-| `currency` | `"USD"` | Currency for values (e.g., `EUR`, `GBP`, `PHP`) |
-| `currencyStyle` | `"symbol"` | Display as `"symbol"` ($, €, £) or `"code"` (USD, EUR) |
-| `cryptoPriceUpdateInterval` | `300000` | Crypto price refresh (5 min) |
-| `stockPriceUpdateInterval` | `1200000` | Stock/forex price refresh (20 min) |
-| `showLastUpdated` | `true` | Show last sync timestamp |
-| `showPricePerUnit` | `true` | Show price column |
-| `showQuantity` | `true` | Show quantity, value columns, and total row |
-| `showGainLoss` | `true` | Show gain/loss percentage column (requires SnapTrade or manual costBasis) |
-| `showForex` | `true` | Show forex rates section |
-| `showInverseForex` | `true` | Show inverse rate column in forex section |
-| `cryptoAsForex` | `[]` | Crypto symbols to show as forex rates (e.g., `["BTC", "ETH"]`) |
-| `sortBy` | `"value"` | Sort by `"value"` or `"name"` |
-| `maxRetries` | `6` | Maximum API retry attempts |
-| `holdingsSyncTime` | `"07:45"` | Daily holdings sync time (HH:MM) |
-| `staleHoldingsThreshold` | `90000000` | Holdings stale after 25 hours |
-| `stalePricesThreshold` | `3900000` | Prices stale after 65 minutes |
-| `showCharts` | `false` | Enable portfolio performance charts |
-| `chartMode` | `"combined"` | Chart mode: `"combined"`, `"separate"`, or `"exclude-crypto"` |
-| `chartPeriod` | `"1M"` | Default chart period: `"1D"`, `"1W"`, `"1M"`, `"3M"`, `"1Y"`, `"All"` |
-| `showPeriodSelector` | `false` | Show period selector buttons (for touch devices) |
-| `historyRetention` | `1825` | Days to retain daily chart history (default: 5 years) |
-| `hourlyRetention` | `720` | Hours to retain hourly chart data (default: 30 days) |
-| `marketHours` | See below | Market-hour polling schedules by asset type |
+| Option | Default | Accepted Values | Description |
+|--------|---------|-----------------|-------------|
+| `title` | `"Portfolio"` | Any string | Header text |
+| `fontSize` | `100` | Any number; interpreted as a percentage such as `80`, `100`, `120` | Font size for the module wrapper |
+| `displayMode` | `"table"` | `"table"`, `"ticker"` | Display holdings as a table or a horizontally scrolling ticker |
+| `tickerSpeed` | `50` | Any positive number | Ticker scroll speed in pixels per second |
+| `tickerStartDelay` | `3000` | Any non-negative number | Milliseconds to hold the ticker still before scrolling starts |
+| `tickerPause` | `0` | Any non-negative number | Milliseconds to pause on each item (`0` disables pauses) |
+| `tickerCollapseCash` | `false` | `true`, `false` | When `true`, combines cash-equivalent holdings into a single `Cash` ticker item |
+| `currency` | `"USD"` | Any currency code string such as `"USD"`, `"EUR"`, `"GBP"`, `"PHP"` | Currency code used for display; symbol rendering is built in for `USD`, `EUR`, `GBP`, `JPY`, `CNY`, `PHP`, `CAD`, `AUD`, `CHF`, `INR`, `KRW`, `MXN`, `BRL`, `SGD`, and `HKD` |
+| `currencyStyle` | `"symbol"` | `"symbol"`, `"code"` | Display values with a currency symbol or currency code |
+| `cryptoPriceUpdateInterval` | `300000` | Any positive number | Crypto price refresh interval in milliseconds |
+| `stockPriceUpdateInterval` | `1200000` | Any positive number | Stock, ETF, mutual fund, and forex refresh interval in milliseconds |
+| `showLastUpdated` | `true` | `true`, `false` | Show the last successful sync timestamp |
+| `showPricePerUnit` | `true` | `true`, `false` | Show the price-per-unit column |
+| `showQuantity` | `true` | `true`, `false` | Show quantity and value columns, plus the total row |
+| `showGainLoss` | `true` | `true`, `false` | Show gain/loss percentage when cost basis data is available |
+| `showForex` | `true` | `true`, `false` | Show the forex rates section |
+| `showInverseForex` | `true` | `true`, `false` | Show inverse rates in the forex section |
+| `cryptoAsForex` | `[]` | Array of crypto symbol strings, for example `["BTC", "ETH"]` | Treat selected crypto holdings as forex-style rates |
+| `sortBy` | `"value"` | `"value"`, `"name"` | Sort holdings by descending value or by symbol/name |
+| `maxRetries` | `6` | Any non-negative integer | Maximum retry attempts for provider API requests |
+| `holdingsSyncTime` | `"07:45"` | Time string in `HH:MM` 24-hour format | Daily holdings sync time |
+| `staleHoldingsThreshold` | `90000000` | Any positive number | Holdings age threshold in milliseconds before data is marked stale |
+| `stalePricesThreshold` | `3900000` | Any positive number | Price age threshold in milliseconds before data is marked stale |
+| `showCharts` | `false` | `true`, `false` | Enable portfolio history charts |
+| `chartMode` | `"combined"` | `"combined"`, `"separate"`, `"exclude-crypto"` | Use one combined chart, split traditional and crypto into separate charts, or hide crypto from the chart |
+| `chartPeriod` | `"1M"` | `"1D"`, `"1W"`, `"1M"`, `"3M"`, `"1Y"`, `"All"` | Default chart history period |
+| `showPeriodSelector` | `false` | `true`, `false` | Show chart period buttons for touch or click interaction |
+| `historyRetention` | `1825` | Any positive integer | Daily-history retention in days |
+| `hourlyRetention` | `720` | Any positive integer | Hourly-history retention in hours |
+| `marketHours` | See below | Object with `stock`, `etf`, `mutual_fund`, and `forex` schedules | Market-hour polling schedules by asset type |
 
 ## Market Hours Scheduling
 
@@ -501,6 +501,11 @@ The module can display portfolio value charts over time.
 - `separate` - Two charts: Traditional investments + Crypto
 - `exclude-crypto` - Single chart showing only traditional investments
 
+**Chart Defaults:**
+- `chartMode: "combined"`
+- `chartPeriod: "1M"`
+- `showPeriodSelector: false`
+
 **Time Periods:**
 - `1D` - Last 24 hours (uses hourly snapshots)
 - `1W` - Last 7 days (uses hourly snapshots for higher granularity)
@@ -510,6 +515,7 @@ The module can display portfolio value charts over time.
 **Chart Features:**
 - **Cost Basis Line**: Dashed horizontal line showing your total cost basis (requires cost basis data from SnapTrade or manual holdings)
 - **Period Change Label**: Shows the percentage change over the displayed period (e.g., "+5.23%") in green/red
+- **Optional Period Buttons**: Set `showPeriodSelector: true` to show `1D`, `1W`, `1M`, `3M`, `1Y`, and `All` buttons in the UI
 - **Improved Tick Marks**: Cleaner Y-axis formatting with appropriate precision
 
 **Data Collection:**
@@ -551,11 +557,13 @@ The module can display portfolio value charts over time.
 | `providers/twelvedata.js` | Twelve Data API provider (stocks/ETFs/forex) | Tracked |
 | `providers/snaptrade.js` | SnapTrade API provider (brokerage holdings) | Tracked |
 | `lib/history-manager.js` | Chart history snapshot management | Tracked |
+| `health-check.js` | Runs the bundled diagnostics with a summary report | Tracked |
 | `setup-credentials.js` | CLI tool to encrypt Coinbase CDP API key | Tracked |
 | `setup-eodhd.js` | CLI tool to encrypt EODHD API key | Tracked |
 | `setup-twelvedata.js` | CLI tool to encrypt Twelve Data API key | Tracked |
 | `setup-snaptrade.js` | CLI tool to encrypt SnapTrade credentials | Tracked |
 | `snaptrade-connect.js` | CLI tool to generate brokerage connection URL | Tracked |
+| `test-eodhd.js` | CLI diagnostic for EODHD mutual fund pricing | Tracked |
 | `cdp_api_key.json` | Original Coinbase key (delete after setup) | Ignored |
 | `cdp-credentials.enc` | Encrypted Coinbase credentials | Ignored |
 | `eodhd-credentials.enc` | Encrypted EODHD credentials | Ignored |
@@ -614,15 +622,16 @@ cd ~/MagicMirror/modules/MMM-Fintech
 node health-check.js
 ```
 
-This runs all four test scripts below and provides a pass/fail summary with timing information. Use this as your first diagnostic step.
+This runs all five test scripts below and provides a pass/fail summary with timing information. Use this as your first diagnostic step.
 
 #### Individual Test Scripts
 
 | Script | Purpose | When to Use |
 |--------|---------|-------------|
 | `test-snaptrade-provider.js` | Tests SnapTrade initialization and holdings fetch | After SnapTrade setup to verify credentials and brokerage connections |
-| `test-twelvedata.js` | Tests Twelve Data API for stocks, mutual funds, and forex | After Twelve Data setup to verify API key and symbol availability |
-| `test-full-sync.js` | Tests complete holdings sync across all providers | When holdings aren't appearing or to debug provider priority |
+| `test-twelvedata.js` | Tests Twelve Data pricing for stocks, ETFs, and forex | After Twelve Data setup to verify API key and symbol availability |
+| `test-eodhd.js` | Tests EODHD pricing for mutual funds | After EODHD setup or when a mutual fund is not pricing correctly |
+| `test-full-sync.js` | Tests complete holdings sync across configured providers | When holdings aren't appearing or to debug provider priority |
 | `test-costbasis.js` | Tests cost basis and gain/loss data from SnapTrade | When G/L column shows incorrect values or dashes |
 
 **Example usage:**
@@ -634,6 +643,7 @@ node health-check.js
 # Or run individual tests for specific diagnostics
 node test-snaptrade-provider.js
 node test-twelvedata.js
+node test-eodhd.js
 node test-full-sync.js
 ```
 

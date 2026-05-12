@@ -9,7 +9,6 @@ cdp_api_key.json
 .cache/
 manual-holdings.json
 AI-CONTEXT.md
-DEV.md
 QA-TEST-PLAN-v0.8.0.md
 cache.json
 history.json

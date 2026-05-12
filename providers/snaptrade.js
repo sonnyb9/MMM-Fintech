@@ -88,8 +88,14 @@ class SnapTradeProvider {
     return true;
   }
 
-  mapTypeCode(typeCode, cashEquivalent) {
+  mapTypeCode(typeCode, cashEquivalent, rawSymbol) {
     if (cashEquivalent) {
+      return "cash";
+    }
+
+    // SnapTrade can report Coinbase USD balances as type "crypto".
+    // Treat plain USD as cash so the module doesn't try to fetch a crypto quote for it.
+    if (typeCode === "crypto" && rawSymbol === "USD") {
       return "cash";
     }
 
@@ -203,7 +209,7 @@ class SnapTradeProvider {
         var units = pos.units || pos.fractional_units || 0;
         if (units === 0) continue;
 
-        var assetType = this.mapTypeCode(typeCode, cashEquivalent);
+        var assetType = this.mapTypeCode(typeCode, cashEquivalent, rawSymbol);
         var normalizedSymbol = this.normalizeSymbol(rawSymbol);
         var source = "snaptrade-" + institution.toLowerCase();
         var price = pos.price || 0;

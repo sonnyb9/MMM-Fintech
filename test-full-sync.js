@@ -37,6 +37,14 @@ async function main() {
     console.log("   [--] TwelveData not configured");
   }
 
+  var eodhd = providers.createProvider("eodhd");
+  if (eodhd.init({}, modulePath)) {
+    activeProviders.eodhd = eodhd;
+    console.log("   [OK] EODHD provider initialized");
+  } else {
+    console.log("   [--] EODHD not configured");
+  }
+
   console.log("\n2) Fetching holdings...\n");
 
   var apiHoldings = [];
